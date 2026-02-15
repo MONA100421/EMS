@@ -15,8 +15,8 @@ router.post("/auth/refresh", authCtrl.refreshHandler);
 router.post("/auth/logout", authCtrl.logoutHandler);
 
 // ONBOARDING (user)
-// router.get("/onboarding/me", authMiddleware, onboardingCtrl.getMyOnboarding);
-// router.post("/onboarding", authMiddleware, onboardingCtrl.submitOnboarding);
+router.get("/onboarding/me", authMiddleware, onboardingCtrl.getMyOnboarding);
+router.post("/onboarding", authMiddleware, onboardingCtrl.submitOnboarding);
 
 // UPLOADS
 router.post("/uploads/presign", authMiddleware, uploadCtrl.presignUpload);
@@ -28,11 +28,17 @@ router.post("/uploads/presign-get", authMiddleware, uploadCtrl.presignGet);
 //router.post("/documents", authMiddleware, documentCtrl.uploadDocument);
 
 // HR routes (require role)
-//router.get(
-//  "/hr/onboarding",
-//  authMiddleware,
-//  requireRole("hr"),
-//  onboardingCtrl.listOnboardingsForHR,
-//);
+router.get(
+  "/hr/onboarding",
+  authMiddleware,
+  requireRole("hr"),
+  onboardingCtrl.listOnboardingsForHR,
+);
+router.post(
+  "/hr/onboarding/:id/review",
+  authMiddleware,
+  requireRole("hr"),
+  onboardingCtrl.reviewOnboarding,
+);
 
 export default router;

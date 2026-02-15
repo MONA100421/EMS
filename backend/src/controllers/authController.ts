@@ -18,6 +18,7 @@ const signOptions: SignOptions = {
   expiresIn: ACCESS_TOKEN_EXPIRES_IN as jwt.SignOptions["expiresIn"],
 };
 
+
 // Helper: Create refresh token record in DB
 async function createRefreshToken(userId: string) {
   const rawToken = crypto.randomBytes(64).toString("hex");
@@ -38,6 +39,7 @@ async function createRefreshToken(userId: string) {
 
 // LOGIN
 export const loginHandler = async (req: Request, res: Response) => {
+
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -206,10 +208,44 @@ export const validateRegistrationToken = async (
 export const registerHandler = async (req: Request, res: Response) => {
   const { token, email, username, password } = req.body;
 
-  if (!token || !email || !username || !password) {
+  if (!email || !username || !password) {
     return res
       .status(400)
       .json({ ok: false, message: "Missing required fields" });
+  }
+
+  // 🚀 開發模式：跳過 token 驗證
+  if (process.env.NODE_ENV !== "production") {
+    const exists = await User.findOne({ $or: [{ email }, { username }] });
+    if (exists) {
+      return res
+        .status(409)
+        .json({ ok: false, message: "Username or Email already exists" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      email,
+      username,
+      passwordHash,
+      role: "employee",
+    });
+
+    return res.json({
+      ok: true,
+      message: "Registration successful (DEV MODE)",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  }
+
+  // 🏭 Production 邏輯（原本的 token 驗證）
+  if (!token) {
+    return res.status(400).json({ ok: false, message: "Missing token" });
   }
 
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -240,7 +276,6 @@ export const registerHandler = async (req: Request, res: Response) => {
     role: "employee",
   });
 
-  // Mark invite token as used
   record.used = true;
   record.usedAt = new Date();
   record.usedBy = user._id as any;
