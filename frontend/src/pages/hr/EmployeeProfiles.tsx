@@ -116,7 +116,7 @@ const mockEmployees: Employee[] = [
 const EmployeeProfiles: React.FC = () => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   const filteredEmployees = employees.filter((emp) => {
     const query = searchQuery.toLowerCase();
@@ -137,12 +137,15 @@ const EmployeeProfiles: React.FC = () => {
     setEmployees(res.data.employees);
   };
 
-  const handleSearchInput = (q: string) => {
+  const handleSearchInput = async (q: string) => {
     setSearchQuery(q);
+
     if (!q) {
-      setEmployees(mockEmployees);
+      const res = await api.get("/hr/employees");
+      setEmployees(res.data.employees);
       return;
     }
+
     handleSearch(q);
   };
 

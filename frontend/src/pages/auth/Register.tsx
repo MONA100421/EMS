@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -21,22 +21,51 @@ import {
   Email as EmailIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext";
+import api from "../../lib/api";
+import axios, { AxiosError } from "axios";
+
 
 const Register: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { register } = useAuth();
+  const token = searchParams.get("token");
 
-  // Email from token link
-  const emailFromToken = searchParams.get("email") || "john.doe@company.com";
+  const [validating, setValidating] = useState(true);
+  const [invalidToken, setInvalidToken] = useState(false);
 
   const [formData, setFormData] = useState({
-    email: emailFromToken,
+    email: "",
     username: "",
     password: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    const validateToken = async () => {
+      if (!token) {
+        setInvalidToken(true);
+        setValidating(false);
+        return;
+      }
+
+      try {
+        const res = await api.get(`/auth/validate/${token}`);
+        setFormData((prev) => ({
+          ...prev,
+          email: res.data.email,
+        }));
+      } catch (err) {
+        setInvalidToken(true);
+      } finally {
+        setValidating(false);
+      }
+    };
+
+    validateToken();
+  }, [token]);
+
+  // Email from token link
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -78,27 +107,41 @@ const Register: React.FC = () => {
     setSubmitError("");
 
     if (!validate()) return;
+    if (!token) {
+      setSubmitError("Invalid or missing invitation token.");
+      return;
+    }
 
     setLoading(true);
 
     try {
-      const success = await register({
+      await api.post("/auth/register", {
+        token,
         email: formData.email,
         username: formData.username,
         password: formData.password,
       });
 
-      if (success) {
-        navigate("/employee/dashboard");
+      navigate("/login");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        setSubmitError(
+          err.response?.data?.message ||
+            "Registration failed. Please try again.",
+        );
       } else {
         setSubmitError("Registration failed. Please try again.");
       }
-    } catch (err) {
-      setSubmitError("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
+
+  if (validating) {
+    return <CircularProgress />;
+  }
+
+  if (invalidToken) {
+    return <Alert severity="error">Unable to validate invitation link.</Alert>;
+  }
 
   return (
     <Box

@@ -373,13 +373,13 @@ const HiringManagement: React.FC = () => {
                             textOverflow: "ellipsis",
                           }}
                         >
-                          {token.link ?? token.registrationLink ?? "-"}
+                          {token.registrationLink ?? "-"}
                         </Typography>
                         <IconButton
                           size="small"
                           onClick={() =>
                             navigator.clipboard.writeText(
-                              token.link ?? token.registrationLink ?? "",
+                              token.registrationLink ?? "",
                             )
                           }
                         >

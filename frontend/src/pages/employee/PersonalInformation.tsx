@@ -220,11 +220,38 @@ const PersonalInformation: React.FC = () => {
     setTempData({ ...formData[sectionId] });
   };
 
+
   const handleSave = async (sectionId: string) => {
     try {
-      await api.patch("/employee/me", { [sectionId]: tempData });
+      let payload: Record<string, unknown> = {};
 
-      setFormData((prev) => ({ ...prev, [sectionId]: { ...tempData } }));
+      if (sectionId === "name") {
+        payload = tempData;
+      }
+
+      if (sectionId === "address") {
+        payload = { address: tempData };
+      }
+
+      if (sectionId === "contact") {
+        payload = {
+          phone: tempData.phone,
+          workPhone: tempData.workPhone,
+          email: tempData.email,
+        };
+      }
+
+      if (sectionId === "emergency") {
+        payload = { emergency: tempData };
+      }
+
+      await api.patch("/employee/me", payload);
+
+      setFormData((prev) => ({
+        ...prev,
+        [sectionId]: { ...tempData },
+      }));
+
       setEditingSection(null);
       setTempData({});
     } catch (err) {
@@ -232,6 +259,10 @@ const PersonalInformation: React.FC = () => {
     }
   };
 
+  const handleDownload = async (fileUrl: string) => {
+    const res = await api.post("/uploads/presign-get", { fileUrl });
+    window.open(res.data.downloadUrl, "_blank");
+  };
 
   const handleCancel = () => {
     setCancelDialogOpen(true);

@@ -53,26 +53,26 @@ type RawDoc = {
 const transformDocs = (docs: RawDoc[]): VisaStep[] => {
   const base: VisaStep[] = [
     {
-      id: "opt-receipt",
+      id: "opt_receipt",
       title: "OPT Receipt",
       description: "Upload your OPT Receipt Notice (I-797C)",
       status: "not-started",
     },
     {
-      id: "ead",
+      id: "opt_ead",
       title: "EAD Card",
       description: "Upload your Employment Authorization Document",
       status: "not-started",
     },
     {
-      id: "i-983",
+      id: "i_983",
       title: "I-983 Form",
       description:
         "Download, complete, and upload the I-983 Training Plan form",
       status: "not-started",
     },
     {
-      id: "i-20",
+      id: "i_20",
       title: "I-20",
       description: "Upload your updated I-20 with STEM extension",
       status: "not-started",
@@ -94,37 +94,7 @@ const transformDocs = (docs: RawDoc[]): VisaStep[] => {
 const VisaStatus: React.FC = () => {
   const theme = useTheme();
 
-  const [steps, setSteps] = useState<VisaStep[]>([
-    {
-      id: "opt-receipt",
-      title: "OPT Receipt",
-      description: "Upload your OPT Receipt Notice (I-797C)",
-      status: "approved",
-      document: "OPT_Receipt_I797C.pdf",
-      uploadedAt: "2024-01-15",
-    },
-    {
-      id: "ead",
-      title: "EAD Card",
-      description: "Upload your Employment Authorization Document",
-      status: "pending",
-      document: "EAD_Card.pdf",
-      uploadedAt: "2024-01-20",
-    },
-    {
-      id: "i-983",
-      title: "I-983 Form",
-      description:
-        "Download, complete, and upload the I-983 Training Plan form",
-      status: "not-started",
-    },
-    {
-      id: "i-20",
-      title: "I-20",
-      description: "Upload your updated I-20 with STEM extension",
-      status: "not-started",
-    },
-  ]);
+  const [steps, setSteps] = useState<VisaStep[]>([]);
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -182,13 +152,19 @@ const VisaStatus: React.FC = () => {
       });
 
       await api.post("/uploads/complete", {
-        key: presign.data.key,
+        fileUrl: presign.data.fileUrl,
+        fileName: file.name,
         type: stepId,
+        category: "visa",
       });
+
+      const res = await api.get("/documents/my");
+      setSteps(transformDocs(res.data.documents));
     } catch (err) {
-      console.error(err);
+      console.error("Upload failed:", err);
     }
   };
+
 
   const activeStep = getActiveStep();
   const completedSteps = steps.filter((s) => s.status === "approved").length;
