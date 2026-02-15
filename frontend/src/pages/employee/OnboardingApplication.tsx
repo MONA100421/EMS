@@ -28,7 +28,16 @@ import { useNavigate } from "react-router-dom";
 
 type OnboardingStatus = "never-submitted" | "pending" | "approved" | "rejected";
 
+interface DocumentItem {
+  _id: string;
+  fileName: string;
+  type: string;
+  category: string;
+  uploadedAt?: string;
+}
+
 const OnboardingApplication: React.FC = () => {
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const navigate = useNavigate();
   const [version, setVersion] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -41,6 +50,9 @@ const OnboardingApplication: React.FC = () => {
       try {
         const res = await api.get("/onboarding/me");
         const app = res.data.application;
+
+        const docsRes = await api.get("/documents/my");
+        setDocuments(docsRes.data.documents || []);
 
         setStatus(app.status);
         setVersion(app.version);
@@ -61,6 +73,7 @@ const OnboardingApplication: React.FC = () => {
 
     fetchOnboarding();
   }, [navigate]);
+
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -171,6 +184,9 @@ const OnboardingApplication: React.FC = () => {
 
         const res = await api.get("/onboarding/me");
         setVersion(res.data.application.version);
+        const docsRes = await api.get("/documents/my");
+        setDocuments(docsRes.data.documents || []);
+
       } catch (err) {
         console.error("File upload failed:", err);
       }
@@ -425,20 +441,41 @@ const OnboardingApplication: React.FC = () => {
       case 3:
         return (
           <Grid container spacing={3}>
+            {/* Driver License */}
             <Grid item xs={12} md={6}>
               <FileUpload
                 label="Driver's License / State ID *"
                 onFileSelect={handleFileSelect("id_card", "onboarding")}
                 helperText="Upload a clear copy of your ID"
               />
+
+              {documents
+                .filter((doc) => doc.type === "id_card")
+                .map((doc) => (
+                  <Typography key={doc._id} sx={{ mt: 1, fontSize: 14 }}>
+                    {doc.fileName}
+                  </Typography>
+                ))}
             </Grid>
+
+            {/* Work Authorization */}
             <Grid item xs={12} md={6}>
               <FileUpload
                 label="Work Authorization Document *"
                 onFileSelect={handleFileSelect("work_auth", "onboarding")}
                 helperText="OPT EAD, Green Card, etc."
               />
+
+              {documents
+                .filter((doc) => doc.type === "work_auth")
+                .map((doc) => (
+                  <Typography key={doc._id} sx={{ mt: 1, fontSize: 14 }}>
+                    {doc.fileName}
+                  </Typography>
+                ))}
             </Grid>
+
+            {/* Profile Photo */}
             <Grid item xs={12} md={6}>
               <FileUpload
                 label="Profile Photo"
@@ -446,9 +483,18 @@ const OnboardingApplication: React.FC = () => {
                 onFileSelect={handleFileSelect("profile_photo", "onboarding")}
                 helperText="Professional headshot (optional)"
               />
+
+              {documents
+                .filter((doc) => doc.type === "profile_photo")
+                .map((doc) => (
+                  <Typography key={doc._id} sx={{ mt: 1, fontSize: 14 }}>
+                    {doc.fileName}
+                  </Typography>
+                ))}
             </Grid>
           </Grid>
         );
+
       case 4:
         return (
           <Box>
