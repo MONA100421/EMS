@@ -54,7 +54,7 @@ export async function sendInviteEmail(
 ) {
   const transporter = getTransporter();
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
 
   const registerUrl = `${frontendUrl}/register?token=${rawToken}&email=${encodeURIComponent(
     email,
@@ -137,7 +137,7 @@ export async function sendDocumentRejectedEmail({
 }) {
   const transporter = getTransporter();
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
 
   const mjmlTemplate = `
   <mjml>
@@ -204,7 +204,7 @@ export async function sendOnboardingDecisionEmail({
 }) {
   const transporter = getTransporter();
 
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
 
   const color = decision === "approved" ? "#2ecc71" : "#f39c12";
 

@@ -116,8 +116,7 @@ export const inviteEmployee = async (req: Request, res: Response) => {
     // send email
     await sendInviteEmail(email, rawToken, name);
 
-
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:8080";
 
     const registrationLink = `${frontendUrl}/register?token=${rawToken}&email=${encodeURIComponent(
       email,
@@ -178,7 +177,6 @@ export const inviteHistory = async (_req: Request, res: Response) => {
           }).lean();
         }
 
-
         return {
           id: t._id,
           email: t.email,
@@ -208,7 +206,6 @@ export const inviteHistory = async (_req: Request, res: Response) => {
   }
 };
 
-
 export const searchEmployees = async (req: Request, res: Response) => {
   try {
     const { q } = req.query;
@@ -229,16 +226,46 @@ export const searchEmployees = async (req: Request, res: Response) => {
 export const getHRStats = async (_req: Request, res: Response) => {
   try {
     const totalEmployees = await User.countDocuments({ role: "employee" });
-    const pendingOnboarding = await OnboardingApplication.countDocuments({ status: "pending" });
+    const pendingOnboarding = await OnboardingApplication.countDocuments({
+      status: "pending",
+    });
 
-    return res.json({ 
-      ok: true, 
+    return res.json({
+      ok: true,
       stats: {
         totalEmployees,
-        pendingOnboarding
-      }
+        pendingOnboarding,
+      },
     });
   } catch (err) {
     return res.status(500).json({ ok: false });
+  }
+};
+
+export const listOnboardingApplications = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const apps = await OnboardingApplication.find()
+      .populate("user", "username email")
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    const pending = apps.filter((a) => a.status === "pending");
+    const approved = apps.filter((a) => a.status === "approved");
+    const rejected = apps.filter((a) => a.status === "rejected");
+
+    return res.json({
+      ok: true,
+      grouped: {
+        pending,
+        approved,
+        rejected,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, message: "Server error" });
   }
 };

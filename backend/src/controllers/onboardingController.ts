@@ -114,7 +114,6 @@ export const getMyOnboarding = async (req: Request, res: Response) => {
   }
 };
 
-
 /**
  * POST /api/onboarding
  */
@@ -130,7 +129,6 @@ export const submitOnboarding = async (req: Request, res: Response) => {
       user: user.userId,
       __v: version,
     }).session(session);
-
 
     if (!app) {
       await session.abortTransaction();
@@ -170,7 +168,7 @@ export const submitOnboarding = async (req: Request, res: Response) => {
             status: "not_started",
           },
         },
-        { upsert: true, session }
+        { upsert: true, session },
       );
     }
 
@@ -243,7 +241,9 @@ export const reviewOnboarding = async (req: Request, res: Response) => {
 
     if (!app) {
       await session.abortTransaction();
-      return res.status(404).json({ ok: false, message: "Application not found" });
+      return res
+        .status(404)
+        .json({ ok: false, message: "Application not found" });
     }
 
     if (app.status === "approved") {
@@ -317,9 +317,7 @@ export const reviewOnboarding = async (req: Request, res: Response) => {
       }
     });
 
-
     return res.json({ ok: true, status: dbToUIStatus(app.status) });
-
   } catch (err) {
     await session.abortTransaction();
     console.error("reviewOnboarding error", err);
@@ -363,5 +361,46 @@ export const getOnboardingDetailForHR = async (req: Request, res: Response) => {
     });
   } catch (err) {
     return res.status(500).json({ ok: false, message: "Server error" });
+  }
+};
+
+export const approveOnboarding = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { decision, feedback } = req.body;
+
+    const app = await OnboardingApplication.findById(id);
+
+    if (!app) {
+      return res.status(404).json({ ok: false });
+    }
+
+    if (!["approved", "rejected"].includes(decision)) {
+      return res.status(400).json({ ok: false });
+    }
+
+    app.status = decision;
+    app.hrFeedback = feedback ?? "";
+    app.reviewedAt = new Date();
+    app.history.push({
+      status: decision,
+      updatedAt: new Date(),
+      action: `HR ${decision}`,
+    });
+
+    await app.save();
+
+    if (decision === "approved") {
+      await EmployeeProfile.findOneAndUpdate(
+        { user: app.user },
+        { $set: app.formData },
+        { upsert: true },
+      );
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("approveOnboarding error:", err);
+    return res.status(500).json({ ok: false });
   }
 };

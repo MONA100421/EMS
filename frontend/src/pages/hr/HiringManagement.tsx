@@ -388,10 +388,10 @@ const HiringManagement: React.FC = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {new Date(token.createdAt).toLocaleDateString()}
+                      {new Date(token.createdAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      {new Date(token.expiresAt).toLocaleDateString()}
+                      {new Date(token.expiresAt).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <StatusChip status={token.status} size="small" />

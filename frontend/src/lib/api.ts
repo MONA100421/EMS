@@ -24,23 +24,20 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error.config;
+
     if (
       error.response &&
       error.response.status === 401 &&
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
-      try {
-        await api.post("/auth/refresh"); // returns new access token
-        // backend should return token; update local store / setAccessToken accordingly
-        // NOTE: you need to read the response and set token in redux
-        return api(originalRequest);
-      } catch (e) {
-        // refresh failed -> redirect to login
-        throw e;
-      }
+
+      await api.post("/auth/refresh");
+
+      return api(originalRequest);
     }
-    throw error;
+
+    return Promise.reject(error);
   },
 );
 

@@ -24,7 +24,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import api from "../../lib/api";
 import axios, { AxiosError } from "axios";
 
-
 const Register: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();

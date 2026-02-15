@@ -1,11 +1,12 @@
-import { Schema, model } from 'mongoose';
+import { Schema, model, Types } from "mongoose";
 
-const OnboardingSchema = new Schema(
+const OnboardingApplicationSchema = new Schema(
   {
     user: {
-      type: Schema.Types.ObjectId,
+      type: Types.ObjectId,
       ref: "User",
       required: true,
+      unique: true,
     },
 
     status: {
@@ -18,15 +19,13 @@ const OnboardingSchema = new Schema(
       type: Schema.Types.Mixed,
     },
 
-    hrFeedback: {
-      type: String,
-    },
+    hrFeedback: String,
 
     history: [
       {
-        status: { type: String },
+        status: String,
         updatedAt: { type: Date, default: Date.now },
-        action: { type: String },
+        action: String,
       },
     ],
 
@@ -36,6 +35,4 @@ const OnboardingSchema = new Schema(
   { timestamps: true },
 );
 
-OnboardingSchema.index({ user: 1 }, { unique: true });
-
-export default model('OnboardingApplication', OnboardingSchema);
+export default model("OnboardingApplication", OnboardingApplicationSchema);
