@@ -208,64 +208,55 @@ export const validateRegistrationToken = async (
 export const registerHandler = async (req: Request, res: Response) => {
   const { token, email, username, password } = req.body;
 
-  if (!email || !username || !password) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Missing required fields" });
-  }
-
-  // 🚀 開發模式：跳過 token 驗證
-  if (process.env.NODE_ENV !== "production") {
-    const exists = await User.findOne({ $or: [{ email }, { username }] });
-    if (exists) {
-      return res
-        .status(409)
-        .json({ ok: false, message: "Username or Email already exists" });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      email,
-      username,
-      passwordHash,
-      role: "employee",
+  if (!token || !email || !username || !password) {
+    return res.status(400).json({
+      ok: false,
+      message: "Missing required fields",
     });
-
-    return res.json({
-      ok: true,
-      message: "Registration successful (DEV MODE)",
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-      },
-    });
-  }
-
-  // 🏭 Production 邏輯（原本的 token 驗證）
-  if (!token) {
-    return res.status(400).json({ ok: false, message: "Missing token" });
   }
 
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
   const record = await RegistrationToken.findOne({ tokenHash });
 
-  if (!record)
-    return res.status(400).json({ ok: false, message: "Invalid token" });
-  if (record.used)
-    return res.status(400).json({ ok: false, message: "Token already used" });
-  if (record.expiresAt < new Date())
-    return res.status(400).json({ ok: false, message: "Token expired" });
-  if (record.email.toLowerCase() !== email.toLowerCase()) {
-    return res.status(400).json({ ok: false, message: "Email mismatch" });
+  if (!record) {
+    return res.status(400).json({
+      ok: false,
+      message: "Invalid token",
+    });
   }
 
-  const exists = await User.findOne({ $or: [{ email }, { username }] });
-  if (exists)
-    return res
-      .status(409)
-      .json({ ok: false, message: "Username or Email already exists" });
+  if (record.used) {
+    return res.status(400).json({
+      ok: false,
+      message: "Token already used",
+    });
+  }
+
+  if (record.expiresAt < new Date()) {
+    return res.status(400).json({
+      ok: false,
+      message: "Token expired",
+    });
+  }
+
+  if (record.email.toLowerCase() !== email.toLowerCase()) {
+    return res.status(400).json({
+      ok: false,
+      message: "Email mismatch",
+    });
+  }
+
+  // 檢查是否重複帳號
+  const exists = await User.findOne({
+    $or: [{ email }, { username }],
+  });
+
+  if (exists) {
+    return res.status(409).json({
+      ok: false,
+      message: "Username or Email already exists",
+    });
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -281,5 +272,8 @@ export const registerHandler = async (req: Request, res: Response) => {
   record.usedBy = user._id as any;
   await record.save();
 
-  return res.json({ ok: true, message: "Registration successful" });
+  return res.json({
+    ok: true,
+    message: "Registration successful",
+  });
 };

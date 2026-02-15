@@ -2,33 +2,65 @@ import nodemailer from "nodemailer";
 import mjml2html from "mjml";
 import Handlebars from "handlebars";
 
-// Initialize the SMTP transporter using environment variables
+/* --------------------------------------------------
+   SMTP TRANSPORTER
+-------------------------------------------------- */
+
 function getTransporter() {
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_PORT === "465",
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
+
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    throw new Error("❌ SMTP configuration missing in environment variables");
+  }
+
+  const port = Number(SMTP_PORT || 587);
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure: port === 465, // true for 465, false for 587
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: SMTP_USER,
+      pass: SMTP_PASS,
     },
   });
+
+  return transporter;
 }
 
-// Send a warm invitation email to a new employee
+/* --------------------------------------------------
+   HELPER: Compile MJML safely
+-------------------------------------------------- */
+
+function compileMjml(template: string, data: any) {
+  const compiled = Handlebars.compile(template)(data);
+  const { html, errors } = mjml2html(compiled);
+
+  if (errors && errors.length > 0) {
+    console.error("⚠ MJML compile errors:", errors);
+  }
+
+  return html;
+}
+
+/* --------------------------------------------------
+   INVITE EMAIL
+-------------------------------------------------- */
+
 export async function sendInviteEmail(
   email: string,
   rawToken: string,
   fullName: string,
 ) {
-  const registerUrl = `${
-    process.env.FRONTEND_URL || "http://localhost:5173"
-  }/register?token=${rawToken}&email=${encodeURIComponent(email)}`;
-
   const transporter = getTransporter();
 
-  // MJML
-  const mjml = `
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  const registerUrl = `${frontendUrl}/register?token=${rawToken}&email=${encodeURIComponent(
+    email,
+  )}`;
+
+  const mjmlTemplate = `
   <mjml>
     <mj-head>
       <mj-font name="Inter" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700" />
@@ -68,18 +100,30 @@ export async function sendInviteEmail(
   </mjml>
   `;
 
-  const template = Handlebars.compile(mjml);
-  const htmlOutput = mjml2html(template({ fullName, registerUrl }));
-
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: `Warm Welcome, ${fullName}! Complete your registration`,
-    html: htmlOutput.html,
+  const html = compileMjml(mjmlTemplate, {
+    fullName,
+    registerUrl,
   });
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to: email,
+      subject: "You're Invited to Join EMS",
+      html,
+    });
+
+    console.log("✅ Invite email sent to:", email);
+  } catch (err) {
+    console.error("❌ Failed to send invite email:", err);
+    throw err;
+  }
 }
 
-// Notify employee when a document has been rejected
+/* --------------------------------------------------
+   DOCUMENT REJECTED EMAIL
+-------------------------------------------------- */
+
 export async function sendDocumentRejectedEmail({
   to,
   documentType,
@@ -93,19 +137,27 @@ export async function sendDocumentRejectedEmail({
 }) {
   const transporter = getTransporter();
 
-  const mjml = `
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  const mjmlTemplate = `
   <mjml>
     <mj-body background-color="#f4f7f9">
       <mj-section background-color="#ffffff">
         <mj-column>
-          <mj-text font-size="20px" font-weight="700" color="#e74c3c">Document Revision Required</mj-text>
-          <mj-text font-size="16px">Hi,</mj-text>
-          <mj-text font-size="14px">The following document needs your attention:</mj-text>
-          <mj-text font-size="14px"><strong>Type:</strong> {{documentType}}</mj-text>
-          <mj-text font-size="14px"><strong>Reviewed by:</strong> {{reviewer}}</mj-text>
-          <mj-text font-size="14px"><strong>Feedback:</strong> {{feedback}}</mj-text>
-          <mj-button background-color="#e74c3c" color="white" href="{{frontendUrl}}">
-            Re-upload Now
+          <mj-text font-size="20px" font-weight="bold" color="#e74c3c">
+            Document Revision Required
+          </mj-text>
+          <mj-text>
+            Document: <strong>{{documentType}}</strong>
+          </mj-text>
+          <mj-text>
+            Reviewer: <strong>{{reviewer}}</strong>
+          </mj-text>
+          <mj-text>
+            Feedback: {{feedback}}
+          </mj-text>
+          <mj-button background-color="#e74c3c" href="{{frontendUrl}}">
+            Re-upload Document
           </mj-button>
         </mj-column>
       </mj-section>
@@ -113,59 +165,66 @@ export async function sendDocumentRejectedEmail({
   </mjml>
   `;
 
-  const template = Handlebars.compile(mjml);
-  const htmlOutput = mjml2html(
-    template({
-      documentType,
-      reviewer,
-      feedback: feedback ?? "No specific reason provided.",
-      frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
-    }),
-  );
-
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject: `Attention Needed: Your ${documentType} requires revision`,
-    html: htmlOutput.html,
+  const html = compileMjml(mjmlTemplate, {
+    documentType,
+    reviewer,
+    feedback: feedback ?? "Please update your document.",
+    frontendUrl,
   });
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject: `Your ${documentType} requires revision`,
+      html,
+    });
+
+    console.log("✅ Document rejection email sent");
+  } catch (err) {
+    console.error("❌ Failed to send document rejection email:", err);
+    throw err;
+  }
 }
 
-// Notify employee regarding their onboarding decision
+/* --------------------------------------------------
+   ONBOARDING DECISION EMAIL
+-------------------------------------------------- */
+
 export async function sendOnboardingDecisionEmail({
   to,
   decision,
   reviewer,
-  onboardingId,
   feedback,
 }: {
   to: string;
   decision: "approved" | "rejected";
   reviewer: string;
-  onboardingId?: string;
   feedback?: string;
 }) {
   const transporter = getTransporter();
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const actionUrl = onboardingId
-    ? `${frontendUrl}/employee/onboarding`
-    : frontendUrl;
 
-  const mjml = `
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+
+  const color = decision === "approved" ? "#2ecc71" : "#f39c12";
+
+  const mjmlTemplate = `
   <mjml>
     <mj-body background-color="#f4f7f9">
       <mj-section background-color="#ffffff">
         <mj-column>
-          <mj-text font-size="20px" font-weight="700" color="{{color}}">
+          <mj-text font-size="20px" font-weight="bold" color="${color}">
             {{statusTitle}}
           </mj-text>
-          <mj-text font-size="16px">{{message}}</mj-text>
-          <mj-text font-size="14px">Reviewer: <strong>{{reviewer}}</strong></mj-text>
+          <mj-text>{{message}}</mj-text>
+          <mj-text>
+            Reviewer: <strong>{{reviewer}}</strong>
+          </mj-text>
           {{#if feedback}}
-            <mj-text font-size="14px">Notes: {{feedback}}</mj-text>
+            <mj-text>Notes: {{feedback}}</mj-text>
           {{/if}}
-          <mj-button background-color="{{color}}" color="white" href="{{actionUrl}}">
-            Check Status
+          <mj-button background-color="${color}" href="{{frontendUrl}}">
+            View Details
           </mj-button>
         </mj-column>
       </mj-section>
@@ -173,31 +232,34 @@ export async function sendOnboardingDecisionEmail({
   </mjml>
   `;
 
-  const template = Handlebars.compile(mjml);
-  const htmlOutput = mjml2html(
-    template({
-      reviewer,
-      feedback: feedback ?? null,
-      actionUrl,
-      color: decision === "approved" ? "#2ecc71" : "#f39c12",
-      statusTitle:
-        decision === "approved"
-          ? "Onboarding Approved! 🎉"
-          : "Onboarding Update Needed",
-      message:
-        decision === "approved"
-          ? "Great news! Your onboarding application has been fully approved. Welcome aboard!"
-          : "Your onboarding application has been reviewed, but we need a few more changes before we can move forward.",
-    }),
-  );
-
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject:
+  const html = compileMjml(mjmlTemplate, {
+    reviewer,
+    feedback,
+    frontendUrl,
+    statusTitle:
       decision === "approved"
-        ? "Congratulations! Onboarding Approved"
-        : "Update: Your Onboarding Status",
-    html: htmlOutput.html,
+        ? "Onboarding Approved 🎉"
+        : "Onboarding Update Required",
+    message:
+      decision === "approved"
+        ? "Your onboarding has been fully approved. Welcome aboard!"
+        : "Your onboarding needs some updates. Please review the feedback.",
   });
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject:
+        decision === "approved"
+          ? "Onboarding Approved"
+          : "Onboarding Requires Updates",
+      html,
+    });
+
+    console.log("✅ Onboarding decision email sent");
+  } catch (err) {
+    console.error("❌ Failed to send onboarding email:", err);
+    throw err;
+  }
 }
