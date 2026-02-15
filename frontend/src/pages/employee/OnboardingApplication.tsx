@@ -51,7 +51,7 @@ const OnboardingApplication: React.FC = () => {
         const res = await api.get("/onboarding/me");
         const app = res.data.application;
 
-        const docsRes = await api.get("/documents/my");
+        const docsRes = await api.get("/documents/me");
         setDocuments(docsRes.data.documents || []);
 
         setStatus(app.status);

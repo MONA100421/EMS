@@ -110,7 +110,7 @@ const PersonalInformation: React.FC = () => {
           },
         });
 
-        const docsRes = await api.get("/documents/my");
+        const docsRes = await api.get("/documents/me");
         setDocuments(docsRes.data.documents || []);
       } catch (err) {
         console.error("Failed to load profile:", err);

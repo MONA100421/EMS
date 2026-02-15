@@ -158,7 +158,7 @@ const VisaStatus: React.FC = () => {
         category: "visa",
       });
 
-      const res = await api.get("/documents/my");
+      const res = await api.get("/documents/me");
       setSteps(transformDocs(res.data.documents));
     } catch (err) {
       console.error("Upload failed:", err);

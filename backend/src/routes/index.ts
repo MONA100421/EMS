@@ -4,6 +4,7 @@ import uploadRoutes from "./uploads";
 import hrRoutes from "./hr";
 import { Router } from "express";
 import employeeRoutes from "./employee";
+import documentsRoutes from "./documents";
 
 
 const router = Router();
@@ -13,5 +14,6 @@ router.use("/onboarding", onboardingRoutes);
 router.use("/uploads", uploadRoutes);
 router.use("/hr", hrRoutes);
 router.use("/employee", employeeRoutes);
+router.use("/documents", documentsRoutes);
 
 export default router;
