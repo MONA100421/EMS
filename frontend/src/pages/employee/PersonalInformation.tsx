@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -27,6 +27,7 @@ import {
 } from "@mui/icons-material";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import { useAuth } from "../../contexts/AuthContext";
+import api from "../../lib/api";
 
 interface SectionData {
   [key: string]: string;
@@ -163,19 +164,74 @@ const PersonalInformation: React.FC = () => {
     },
   ];
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get("/employee/me");
+        const emp = res.data.employee;
+
+        // map backend employee -> local formData shape
+        setFormData({
+          name: {
+            firstName: emp.firstName || "",
+            lastName: emp.lastName || "",
+            middleName: emp.middleName || "",
+            preferredName: emp.preferredName || "",
+          },
+          address: {
+            street: emp.address?.street || "",
+            apt: emp.address?.apt || "",
+            city: emp.address?.city || "",
+            state: emp.address?.state || "",
+            zipCode: emp.address?.zipCode || "",
+            country: emp.address?.country || "",
+          },
+          contact: {
+            email: emp.email || "",
+            phone: emp.phone || "",
+            workPhone: emp.workPhone || "",
+          },
+          employment: {
+            employeeId: emp.employeeId || "",
+            title: emp.title || "",
+            department: emp.department || "",
+            manager: emp.manager || "",
+            startDate: emp.startDate || "",
+            workAuthorization: emp.workAuthorization || "",
+          },
+          emergency: {
+            contactName: emp.emergency?.contactName || "",
+            relationship: emp.emergency?.relationship || "",
+            phone: emp.emergency?.phone || "",
+            email: emp.emergency?.email || "",
+          },
+        });
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+
   const handleEdit = (sectionId: string) => {
     setEditingSection(sectionId);
     setTempData({ ...formData[sectionId] });
   };
 
-  const handleSave = (sectionId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [sectionId]: { ...tempData },
-    }));
-    setEditingSection(null);
-    setTempData({});
+  const handleSave = async (sectionId: string) => {
+    try {
+      await api.patch("/employee/me", { [sectionId]: tempData });
+
+      setFormData((prev) => ({ ...prev, [sectionId]: { ...tempData } }));
+      setEditingSection(null);
+      setTempData({});
+    } catch (err) {
+      console.error("Failed to save section:", err);
+    }
   };
+
 
   const handleCancel = () => {
     setCancelDialogOpen(true);

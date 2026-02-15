@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+} from "react";
+import api, { setAccessToken } from "../lib/api";
 
 export type UserRole = "employee" | "hr";
 
@@ -7,88 +14,74 @@ interface User {
   username: string;
   email: string;
   role: UserRole;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
 }
+
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  register: (data: RegisterData) => Promise<boolean>;
-}
-
-interface RegisterData {
-  email: string;
-  username: string;
-  password: string;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Mock users for demo
-const mockUsers: Record<string, User & { password: string }> = {
-  employee: {
-    id: "1",
-    username: "employee",
-    email: "john.doe@company.com",
-    role: "employee",
-    firstName: "John",
-    lastName: "Doe",
-    password: "password123",
-  },
-  hr: {
-    id: "2",
-    username: "hr",
-    email: "sarah.hr@company.com",
-    role: "hr",
-    firstName: "Sarah",
-    lastName: "Johnson",
-    password: "password123",
-  },
-};
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
   const [user, setUser] = useState<User | null>(null);
 
+  // Load user from localStorage on refresh
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    const savedToken = localStorage.getItem("token");
+
+    if (savedUser && savedToken) {
+      setUser(JSON.parse(savedUser));
+      setAccessToken(savedToken);
+    }
+  }, []);
+
   const login = async (
     username: string,
     password: string,
   ): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const res = await api.post("/auth/login", {
+        username,
+        password,
+      });
 
-    const foundUser = mockUsers[username];
-    if (foundUser && foundUser.password === password) {
-      const { password: _, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
+      const { token, user } = res.data;
+
+      // Save token
+      setAccessToken(token);
+      localStorage.setItem("token", token);
+
+      // Save user
+      setUser(user);
+      localStorage.setItem("user", JSON.stringify(user));
+
       return true;
+    } catch (err) {
+      console.error("Login failed:", err);
+      return false;
     }
-    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+
     setUser(null);
-  };
-
-  const register = async (data: RegisterData): Promise<boolean> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    // In a real app, this would create a new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      username: data.username,
-      email: data.email,
-      role: "employee",
-      firstName: "New",
-      lastName: "User",
-    };
-    setUser(newUser);
-    return true;
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setAccessToken(null);
   };
 
   return (
@@ -98,7 +91,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         isAuthenticated: !!user,
         login,
         logout,
-        register,
       }}
     >
       {children}

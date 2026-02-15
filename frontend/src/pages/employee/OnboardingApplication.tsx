@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -22,16 +22,44 @@ import {
 } from "@mui/icons-material";
 import StatusChip, { StatusType } from "../../components/common/StatusChip";
 import FileUpload from "../../components/common/FileUpload";
+import api from "../../lib/api";
+import { useNavigate } from "react-router-dom";
+
 
 type OnboardingStatus = "never-submitted" | "pending" | "approved" | "rejected";
 
 const OnboardingApplication: React.FC = () => {
+  const navigate = useNavigate();
+  const [version, setVersion] = useState(0);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const theme = useTheme();
   const [status, setStatus] = useState<OnboardingStatus>("never-submitted");
   const [activeStep, setActiveStep] = useState(0);
   const [rejectionFeedback] = useState(
     "Please upload a clearer copy of your driver license and SSN card.",
   );
+
+  useEffect(() => {
+    const fetchOnboarding = async () => {
+      try {
+        const res = await api.get("/onboarding/me");
+        const app = res.data.application;
+
+        setStatus(app.status);
+        setVersion(app.version);
+        setFormData(app.formData || {});
+        setFeedback(app.hrFeedback || null);
+
+        if (app.status === "approved") {
+          navigate("/employee/dashboard");
+        }
+      } catch (err) {
+        console.error("Failed to load onboarding:", err);
+      }
+    };
+
+    fetchOnboarding();
+  }, [navigate]);
 
   const [formData, setFormData] = useState({
     firstName: "John",
@@ -101,8 +129,17 @@ const OnboardingApplication: React.FC = () => {
     setActiveStep((prev) => prev - 1);
   };
 
-  const handleSubmit = () => {
-    setStatus("pending");
+  const handleSubmit = async () => {
+    try {
+      await api.post("/onboarding", {
+        formData,
+        version,
+      });
+
+      setStatus("pending");
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getStatusBanner = () => {
@@ -110,8 +147,8 @@ const OnboardingApplication: React.FC = () => {
       case "pending":
         return (
           <Alert severity="info" icon={<PendingIcon />} sx={{ mb: 3 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              Application Pending Review
+            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+              Feedback: {feedback}
             </Typography>
             <Typography variant="body2">
               Your onboarding application has been submitted and is currently
@@ -142,7 +179,7 @@ const OnboardingApplication: React.FC = () => {
               approved.
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              Feedback: {rejectionFeedback}
+              Feedback: {feedback ?? "No feedback provided"}
             </Typography>
           </Alert>
         );

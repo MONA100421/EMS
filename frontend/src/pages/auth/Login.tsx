@@ -45,9 +45,11 @@ const Login: React.FC = () => {
 
     try {
       const success = await login(username, password);
+
       if (success) {
-        // Redirect based on role
-        if (username === "hr") {
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+        if (storedUser.role === "hr") {
           navigate("/hr/dashboard");
         } else {
           navigate("/employee/dashboard");
@@ -56,11 +58,13 @@ const Login: React.FC = () => {
         setError("Invalid username or password");
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <Box

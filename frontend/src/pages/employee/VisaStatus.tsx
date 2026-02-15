@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -24,8 +24,11 @@ import {
   Description as DocIcon,
   Info as InfoIcon,
 } from "@mui/icons-material";
-import StatusChip from "../../components/common/StatusChip";
+import type { StatusType } from "../../components/common/StatusChip";
 import FileUpload from "../../components/common/FileUpload";
+import StatusChip from "../../components/common/StatusChip";
+import api from "../../lib/api";
+
 
 type StepStatus = "not-started" | "pending" | "approved" | "rejected";
 
@@ -38,6 +41,55 @@ interface VisaStep {
   feedback?: string;
   uploadedAt?: string;
 }
+
+type RawDoc = {
+  type: string;
+  fileName?: string;
+  status?: "not-started" | "pending" | "approved" | "rejected";
+  feedback?: string;
+  uploadedAt?: string;
+};
+
+const transformDocs = (docs: RawDoc[]): VisaStep[] => {
+  const base: VisaStep[] = [
+    {
+      id: "opt-receipt",
+      title: "OPT Receipt",
+      description: "Upload your OPT Receipt Notice (I-797C)",
+      status: "not-started",
+    },
+    {
+      id: "ead",
+      title: "EAD Card",
+      description: "Upload your Employment Authorization Document",
+      status: "not-started",
+    },
+    {
+      id: "i-983",
+      title: "I-983 Form",
+      description:
+        "Download, complete, and upload the I-983 Training Plan form",
+      status: "not-started",
+    },
+    {
+      id: "i-20",
+      title: "I-20",
+      description: "Upload your updated I-20 with STEM extension",
+      status: "not-started",
+    },
+  ];
+
+  return base.map((step) => {
+    const found = docs.find((d) => d.type === step.id);
+    return {
+      ...step,
+      status: (found?.status as StepStatus) || step.status,
+      document: found?.fileName,
+      feedback: found?.feedback,
+      uploadedAt: found?.uploadedAt,
+    };
+  });
+};
 
 const VisaStatus: React.FC = () => {
   const theme = useTheme();
@@ -74,6 +126,20 @@ const VisaStatus: React.FC = () => {
     },
   ]);
 
+  useEffect(() => {
+    const fetchDocs = async () => {
+      try {
+        const res = await api.get("/documents/my");
+        const docs = res.data.documents;
+        setSteps(transformDocs(docs));
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchDocs();
+  }, []);
+
   const getStepIcon = (status: StepStatus) => {
     switch (status) {
       case "approved":
@@ -101,19 +167,27 @@ const VisaStatus: React.FC = () => {
     return steps[index - 1].status !== "approved";
   };
 
-  const handleFileUpload = (stepId: string, file: File) => {
-    setSteps((prev) =>
-      prev.map((step) =>
-        step.id === stepId
-          ? {
-              ...step,
-              status: "pending",
-              document: file.name,
-              uploadedAt: new Date().toISOString().split("T")[0],
-            }
-          : step,
-      ),
-    );
+  const handleFileUpload = async (stepId: string, file: File) => {
+    try {
+      const presign = await api.post("/uploads/presign", {
+        fileName: file.name,
+        contentType: file.type,
+        type: stepId,
+        category: "visa",
+      });
+
+      await fetch(presign.data.uploadUrl, {
+        method: "PUT",
+        body: file,
+      });
+
+      await api.post("/uploads/complete", {
+        key: presign.data.key,
+        type: stepId,
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const activeStep = getActiveStep();
@@ -220,7 +294,7 @@ const VisaStatus: React.FC = () => {
                       status={
                         step.status === "not-started"
                           ? "not-started"
-                          : (step.status as any)
+                          : (step.status as StatusType)
                       }
                       size="small"
                     />

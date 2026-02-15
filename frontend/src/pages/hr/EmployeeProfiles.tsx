@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -23,6 +23,7 @@ import {
   OpenInNew as OpenIcon,
   FilterList as FilterIcon,
 } from "@mui/icons-material";
+import api from "../../lib/api";
 
 interface Employee {
   id: string;
@@ -115,8 +116,9 @@ const mockEmployees: Employee[] = [
 const EmployeeProfiles: React.FC = () => {
   const theme = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
+  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
 
-  const filteredEmployees = mockEmployees.filter((emp) => {
+  const filteredEmployees = employees.filter((emp) => {
     const query = searchQuery.toLowerCase();
     return (
       emp.firstName.toLowerCase().includes(query) ||
@@ -129,6 +131,31 @@ const EmployeeProfiles: React.FC = () => {
   const handleRowClick = (employeeId: string) => {
     window.open(`/hr/employees/${employeeId}`, "_blank");
   };
+
+  const handleSearch = async (q: string) => {
+    const res = await api.get(`/hr/employees/search?q=${q}`);
+    setEmployees(res.data.employees);
+  };
+
+  const handleSearchInput = (q: string) => {
+    setSearchQuery(q);
+    if (!q) {
+      setEmployees(mockEmployees);
+      return;
+    }
+    handleSearch(q);
+  };
+
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const res = await api.get("/hr/employees");
+      setEmployees(res.data.employees);
+    };
+
+    fetchEmployees();
+  }, []);
+
 
   return (
     <Box>
@@ -152,7 +179,7 @@ const EmployeeProfiles: React.FC = () => {
                 variant="body2"
                 sx={{ color: theme.palette.text.secondary }}
               >
-                {mockEmployees.length} total employees
+                {employees.length} total employee
               </Typography>
             </Box>
             <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
@@ -160,7 +187,7 @@ const EmployeeProfiles: React.FC = () => {
                 placeholder="Search by name or preferred name..."
                 size="small"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchInput(e.target.value)}
                 sx={{ minWidth: 300 }}
                 InputProps={{
                   startAdornment: (

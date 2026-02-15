@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -35,87 +35,35 @@ import {
 } from "@mui/icons-material";
 import StatusChip from "../../components/common/StatusChip";
 import FeedbackDialog from "../../components/common/FeedbackDialog";
+import api from "../../lib/api";
+
 
 interface TokenRecord {
   id: string;
   email: string;
   name: string;
-  link: string;
-  status: "sent" | "used" | "expired";
   createdAt: string;
   expiresAt: string;
+  status: "active" | "used" | "expired";
+  used: boolean;
+  link?: string;
+  registrationLink?: string;
 }
 
 interface OnboardingApplication {
   id: string;
-  name: string;
-  email: string;
-  submittedAt: string;
+  employee: {
+    username: string;
+    email: string;
+    name?: string;
+  };
   status: "pending" | "approved" | "rejected";
+  submittedAt: string;
+  version: number;
   feedback?: string;
+  hrFeedback?: string;
 }
 
-const mockTokens: TokenRecord[] = [
-  {
-    id: "1",
-    email: "alice.johnson@company.com",
-    name: "Alice Johnson",
-    link: "https://ems.company.com/register?token=abc123",
-    status: "used",
-    createdAt: "2024-01-10",
-    expiresAt: "2024-01-17",
-  },
-  {
-    id: "2",
-    email: "bob.smith@company.com",
-    name: "Bob Smith",
-    link: "https://ems.company.com/register?token=def456",
-    status: "sent",
-    createdAt: "2024-01-15",
-    expiresAt: "2024-01-22",
-  },
-  {
-    id: "3",
-    email: "carol.white@company.com",
-    name: "Carol White",
-    link: "https://ems.company.com/register?token=ghi789",
-    status: "expired",
-    createdAt: "2024-01-01",
-    expiresAt: "2024-01-08",
-  },
-];
-
-const mockApplications: OnboardingApplication[] = [
-  {
-    id: "1",
-    name: "Alice Johnson",
-    email: "alice.johnson@company.com",
-    submittedAt: "2024-01-12",
-    status: "pending",
-  },
-  {
-    id: "2",
-    name: "David Lee",
-    email: "david.lee@company.com",
-    submittedAt: "2024-01-14",
-    status: "pending",
-  },
-  {
-    id: "3",
-    name: "Emma Chen",
-    email: "emma.chen@company.com",
-    submittedAt: "2024-01-08",
-    status: "approved",
-  },
-  {
-    id: "4",
-    name: "Frank Garcia",
-    email: "frank.garcia@company.com",
-    submittedAt: "2024-01-05",
-    status: "rejected",
-    feedback: "Missing work authorization documents",
-  },
-];
 
 const HiringManagement: React.FC = () => {
   const theme = useTheme();
@@ -124,6 +72,40 @@ const HiringManagement: React.FC = () => {
   const [newHireName, setNewHireName] = useState("");
   const [tokenGenerated, setTokenGenerated] = useState(false);
   const [generatedLink, setGeneratedLink] = useState("");
+  const [tokens, setTokens] = useState<TokenRecord[]>([]);
+  const [applications, setApplications] = useState<OnboardingApplication[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+
+        // Invite history
+        const tokenRes = await api.get("/hr/invite/history");
+        setTokens(tokenRes.data.history);
+
+        // Onboarding list
+        const onboardingRes = await api.get("/hr/onboarding");
+        const grouped = onboardingRes.data.grouped;
+
+        // Flatten grouped structure
+        const allApps = [
+          ...grouped.pending,
+          ...grouped.approved,
+          ...grouped.rejected,
+        ];
+
+        setApplications(allApps);
+      } catch (err) {
+        console.error("Failed loading HR data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const [feedbackDialog, setFeedbackDialog] = useState<{
     open: boolean;
@@ -136,18 +118,28 @@ const HiringManagement: React.FC = () => {
   });
 
   const applicationTabs = ["pending", "approved", "rejected"];
-  const filteredApplications = mockApplications.filter(
+  const filteredApplications = applications.filter(
     (app) => app.status === applicationTabs[tabValue],
   );
 
-  const handleGenerateToken = () => {
-    if (!newHireEmail || !newHireName) return;
+  const handleGenerateToken = async () => {
+    try {
+      const res = await api.post("/hr/invite", {
+        email: newHireEmail,
+        name: newHireName,
+      });
 
-    const token = Math.random().toString(36).substring(2, 15);
-    const link = `https://ems.company.com/register?token=${token}&email=${encodeURIComponent(newHireEmail)}`;
-    setGeneratedLink(link);
-    setTokenGenerated(true);
+      setGeneratedLink(res.data.registrationLink);
+      setTokenGenerated(true);
+
+      // refresh history
+      const tokenRes = await api.get("/hr/invite/history");
+      setTokens(tokenRes.data.history);
+    } catch (err) {
+      console.error("Invite failed:", err);
+    }
   };
+
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(generatedLink);
@@ -168,15 +160,31 @@ const HiringManagement: React.FC = () => {
     setFeedbackDialog({ open: true, type: "reject", application: app });
   };
 
-  const handleFeedbackSubmit = (feedback: string) => {
-    console.log(
-      `${feedbackDialog.type}d:`,
-      feedbackDialog.application?.name,
-      "Feedback:",
-      feedback,
-    );
-    setFeedbackDialog({ open: false, type: "approve", application: null });
+  const handleFeedbackSubmit = async (feedback: string) => {
+    if (!feedbackDialog.application) return;
+
+    try {
+      await api.post(`/hr/onboarding/${feedbackDialog.application.id}/review`, {
+        decision: feedbackDialog.type === "approve" ? "approved" : "rejected",
+        feedback,
+      });
+
+      // reload
+      const res = await api.get("/hr/onboarding");
+      const grouped = res.data.grouped;
+      const allApps = [
+        ...grouped.pending,
+        ...grouped.approved,
+        ...grouped.rejected,
+      ];
+      setApplications(allApps);
+
+      setFeedbackDialog({ open: false, type: "approve", application: null });
+    } catch (err) {
+      console.error(err);
+    }
   };
+
 
   return (
     <Box>
@@ -337,7 +345,7 @@ const HiringManagement: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {mockTokens.map((token) => (
+                {tokens.map((token) => (
                   <TableRow key={token.id}>
                     <TableCell>
                       <Box>
@@ -365,20 +373,26 @@ const HiringManagement: React.FC = () => {
                             textOverflow: "ellipsis",
                           }}
                         >
-                          {token.link}
+                          {token.link ?? token.registrationLink ?? "-"}
                         </Typography>
                         <IconButton
                           size="small"
                           onClick={() =>
-                            navigator.clipboard.writeText(token.link)
+                            navigator.clipboard.writeText(
+                              token.link ?? token.registrationLink ?? "",
+                            )
                           }
                         >
                           <CopyIcon fontSize="small" />
                         </IconButton>
                       </Box>
                     </TableCell>
-                    <TableCell>{token.createdAt}</TableCell>
-                    <TableCell>{token.expiresAt}</TableCell>
+                    <TableCell>
+                      {new Date(token.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(token.expiresAt).toLocaleDateString()}
+                    </TableCell>
                     <TableCell>
                       <StatusChip status={token.status} size="small" />
                     </TableCell>
@@ -400,13 +414,13 @@ const HiringManagement: React.FC = () => {
           <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
             <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
               <Tab
-                label={`Pending (${mockApplications.filter((a) => a.status === "pending").length})`}
+                label={`Pending (${applications.filter((a) => a.status === "pending").length})`}
               />
               <Tab
-                label={`Approved (${mockApplications.filter((a) => a.status === "approved").length})`}
+                label={`Approved (${applications.filter((a) => a.status === "approved").length})`}
               />
               <Tab
-                label={`Rejected (${mockApplications.filter((a) => a.status === "rejected").length})`}
+                label={`Rejected (${applications.filter((a) => a.status === "rejected").length})`}
               />
             </Tabs>
           </Box>
@@ -436,20 +450,20 @@ const HiringManagement: React.FC = () => {
                             height: 36,
                           }}
                         >
-                          {app.name
+                          {app.employee.username
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
                         </Avatar>
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {app.name}
+                            {app.employee.username}
                           </Typography>
                           <Typography
                             variant="caption"
                             sx={{ color: theme.palette.text.secondary }}
                           >
-                            {app.email}
+                            {app.employee.email}
                           </Typography>
                         </Box>
                       </Box>
@@ -464,7 +478,7 @@ const HiringManagement: React.FC = () => {
                           variant="body2"
                           sx={{ color: theme.palette.text.secondary }}
                         >
-                          {app.feedback || "-"}
+                          {app.feedback ?? app.hrFeedback ?? "-"}
                         </Typography>
                       </TableCell>
                     )}
@@ -532,7 +546,10 @@ const HiringManagement: React.FC = () => {
             ? "Approve Application"
             : "Reject Application"
         }
-        itemName={feedbackDialog.application?.name}
+        itemName={
+          feedbackDialog.application?.employee?.name ??
+          feedbackDialog.application?.employee?.username
+        }
         requireFeedback={feedbackDialog.type === "reject"}
         onSubmit={handleFeedbackSubmit}
         onCancel={() =>
