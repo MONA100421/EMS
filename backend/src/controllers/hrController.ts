@@ -269,3 +269,20 @@ export const listOnboardingApplications = async (
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 };
+
+export const getEmployeeById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).lean();
+
+    if (!user) {
+      return res.status(404).json({ ok: false, message: "Employee not found" });
+    }
+
+    return res.json({ ok: true, employee: user });
+  } catch (err) {
+    console.error("getEmployeeById error:", err);
+    return res.status(500).json({ ok: false });
+  }
+};

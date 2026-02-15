@@ -247,3 +247,20 @@ export const presignGet = async (req: Request, res: Response) => {
       .json({ ok: false, message: "Failed to generate download URL" });
   }
 };
+
+export const getDocumentsByUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const docs = await Document.find({
+      user: id,
+      deletedAt: null,
+    }).lean();
+
+    return res.json({ ok: true, documents: docs });
+  } catch (err) {
+    console.error("getDocumentsByUser error:", err);
+    return res.status(500).json({ ok: false });
+  }
+};
+
