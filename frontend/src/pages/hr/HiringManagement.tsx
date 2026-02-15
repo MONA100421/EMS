@@ -450,20 +450,19 @@ const HiringManagement: React.FC = () => {
                             height: 36,
                           }}
                         >
-                          {app.employee.username
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
+                          {app.employee?.username
+                            ? app.employee.username[0]
+                            : "?"}
                         </Avatar>
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {app.employee.username}
+                            {app.employee?.username?.[0] ?? "?"}
                           </Typography>
                           <Typography
                             variant="caption"
                             sx={{ color: theme.palette.text.secondary }}
                           >
-                            {app.employee.email}
+                            {app.employee?.email ?? "-"}
                           </Typography>
                         </Box>
                       </Box>
