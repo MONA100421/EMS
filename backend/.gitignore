@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.log
+npm-debug.log*
+ts-node-dev-debug.log
+.vscode/
+coverage/
+uploads/            # 如果你有暫存檔
+.semaphore/
