@@ -157,7 +157,7 @@ export const submitOnboarding = async (req: Request, res: Response) => {
 
     await app.save({ session });
 
-    if (formData.workAuthType === "f1") {
+    if (["f1", "opt", "opt-stem"].includes(formData.workAuthType)) {
       await Document.findOneAndUpdate(
         { user: user.userId, type: "opt_receipt" },
         {

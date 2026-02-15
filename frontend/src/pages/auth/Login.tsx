@@ -52,7 +52,7 @@ const Login: React.FC = () => {
         if (storedUser.role === "hr") {
           navigate("/hr/dashboard");
         } else {
-          navigate("/employee/dashboard");
+          navigate("/employee/onboarding");
         }
       } else {
         setError("Invalid username or password");

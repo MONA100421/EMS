@@ -60,14 +60,18 @@ export const updateMyProfile = async (req: Request, res: Response) => {
     }
 
     /* ---------- User fields ---------- */
-    if (payload.firstName || payload.lastName || payload.preferredName) {
-      user.profile = {
-        ...(user.profile ?? {}),
-        firstName: payload.firstName ?? user.profile?.firstName,
-        lastName: payload.lastName ?? user.profile?.lastName,
-        preferredName: payload.preferredName ?? user.profile?.preferredName,
-      };
-      await user.save();
+    if (!user.profile) {
+      user.profile = {};
+    }
+
+    if (payload.firstName !== undefined) {
+      user.profile.firstName = payload.firstName;
+    }
+    if (payload.lastName !== undefined) {
+      user.profile.lastName = payload.lastName;
+    }
+    if (payload.preferredName !== undefined) {
+      user.profile.preferredName = payload.preferredName;
     }
 
     if (payload.email) {

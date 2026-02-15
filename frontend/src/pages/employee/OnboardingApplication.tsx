@@ -35,9 +35,6 @@ const OnboardingApplication: React.FC = () => {
   const theme = useTheme();
   const [status, setStatus] = useState<OnboardingStatus>("never-submitted");
   const [activeStep, setActiveStep] = useState(0);
-  const [rejectionFeedback] = useState(
-    "Please upload a clearer copy of your driver license and SSN card.",
-  );
 
   useEffect(() => {
     const fetchOnboarding = async () => {
@@ -47,7 +44,11 @@ const OnboardingApplication: React.FC = () => {
 
         setStatus(app.status);
         setVersion(app.version);
-        setFormData(app.formData || {});
+        setFormData((prev) => ({
+          ...prev,
+          ...(app.formData || {}),
+        }));
+
         setFeedback(app.hrFeedback || null);
 
         if (app.status === "approved") {
@@ -62,8 +63,8 @@ const OnboardingApplication: React.FC = () => {
   }, [navigate]);
 
   const [formData, setFormData] = useState({
-    firstName: "John",
-    lastName: "Doe",
+    firstName: "",
+    lastName: "",
     middleName: "",
     preferredName: "",
     ssn: "",
@@ -80,6 +81,7 @@ const OnboardingApplication: React.FC = () => {
     workAuthType: "",
     workAuthOther: "",
   });
+
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -141,6 +143,38 @@ const OnboardingApplication: React.FC = () => {
       console.error(err);
     }
   };
+
+  const handleFileSelect =
+    (type: string, category: string) => async (file: File) => {
+      try {
+        const presign = await api.post("/uploads/presign", {
+          fileName: file.name,
+          contentType: file.type,
+          type,
+          category,
+        });
+
+        await fetch(presign.data.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type,
+          },
+          body: file,
+        });
+
+        await api.post("/uploads/complete", {
+          fileUrl: presign.data.fileUrl,
+          fileName: file.name,
+          type,
+          category,
+        });
+
+        const res = await api.get("/onboarding/me");
+        setVersion(res.data.application.version);
+      } catch (err) {
+        console.error("File upload failed:", err);
+      }
+    };
 
   const getStatusBanner = () => {
     switch (status) {
@@ -394,14 +428,14 @@ const OnboardingApplication: React.FC = () => {
             <Grid item xs={12} md={6}>
               <FileUpload
                 label="Driver's License / State ID *"
-                onFileSelect={(file) => console.log("File selected:", file)}
+                onFileSelect={handleFileSelect("id_card", "onboarding")}
                 helperText="Upload a clear copy of your ID"
               />
             </Grid>
             <Grid item xs={12} md={6}>
               <FileUpload
                 label="Work Authorization Document *"
-                onFileSelect={(file) => console.log("File selected:", file)}
+                onFileSelect={handleFileSelect("work_auth", "onboarding")}
                 helperText="OPT EAD, Green Card, etc."
               />
             </Grid>
@@ -409,7 +443,7 @@ const OnboardingApplication: React.FC = () => {
               <FileUpload
                 label="Profile Photo"
                 accept=".jpg,.jpeg,.png"
-                onFileSelect={(file) => console.log("File selected:", file)}
+                onFileSelect={handleFileSelect("profile_photo", "onboarding")}
                 helperText="Professional headshot (optional)"
               />
             </Grid>

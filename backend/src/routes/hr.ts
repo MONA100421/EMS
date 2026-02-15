@@ -7,7 +7,7 @@ import {
 import { authMiddleware } from "../middleware/authMiddleware";
 import { requireRole } from "../utils/requireRole";
 import { approveOnboarding } from "../controllers/onboardingController";
-
+import * as hrVisaController from "../controllers/hrVisaController";
 
 const router = Router();
 
@@ -20,6 +20,13 @@ router.post(
   authMiddleware,
   requireRole("hr"),
   approveOnboarding,
+);
+
+router.get(
+  "/visa-overview",
+  authMiddleware,
+  requireRole("hr"),
+  hrVisaController.getVisaOverview,
 );
 
 export default router;

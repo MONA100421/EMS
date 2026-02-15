@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -12,7 +12,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Button,
   Chip,
   Avatar,
   IconButton,
@@ -28,6 +27,7 @@ import {
 } from "@mui/icons-material";
 import StatusChip from "../../components/common/StatusChip";
 import FeedbackDialog from "../../components/common/FeedbackDialog";
+import api from "../../lib/api";
 
 interface VisaRecord {
   id: string;
@@ -40,78 +40,17 @@ interface VisaRecord {
   currentStep: string;
   stepStatus: "pending" | "approved" | "rejected";
   nextAction: string;
+  documentKey?: string; // presign 用
 }
-
-const mockInProgressRecords: VisaRecord[] = [
-  {
-    id: "1",
-    employeeName: "John Doe",
-    email: "john.doe@company.com",
-    visaType: "OPT",
-    startDate: "2024-01-15",
-    endDate: "2025-01-14",
-    daysRemaining: 280,
-    currentStep: "EAD Card",
-    stepStatus: "pending",
-    nextAction: "Review EAD document",
-  },
-  {
-    id: "2",
-    employeeName: "David Lee",
-    email: "david.lee@company.com",
-    visaType: "OPT STEM",
-    startDate: "2023-06-01",
-    endDate: "2024-05-31",
-    daysRemaining: 15,
-    currentStep: "I-20",
-    stepStatus: "pending",
-    nextAction: "Review I-20 document",
-  },
-  {
-    id: "3",
-    employeeName: "Emma Chen",
-    email: "emma.chen@company.com",
-    visaType: "OPT",
-    startDate: "2024-02-01",
-    endDate: "2025-01-31",
-    daysRemaining: 320,
-    currentStep: "I-983",
-    stepStatus: "pending",
-    nextAction: "Review I-983 form",
-  },
-];
-
-const mockAllRecords: VisaRecord[] = [
-  ...mockInProgressRecords,
-  {
-    id: "4",
-    employeeName: "Sarah Miller",
-    email: "sarah.miller@company.com",
-    visaType: "Green Card",
-    startDate: "2020-03-15",
-    endDate: "2030-03-14",
-    daysRemaining: 2200,
-    currentStep: "Complete",
-    stepStatus: "approved",
-    nextAction: "-",
-  },
-  {
-    id: "5",
-    employeeName: "Michael Chen",
-    email: "michael.chen@company.com",
-    visaType: "H1-B",
-    startDate: "2022-10-01",
-    endDate: "2025-09-30",
-    daysRemaining: 600,
-    currentStep: "Complete",
-    stepStatus: "approved",
-    nextAction: "-",
-  },
-];
 
 const VisaManagement: React.FC = () => {
   const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
+
+  const [inProgressRecords, setInProgressRecords] = useState<VisaRecord[]>([]);
+  const [allRecords, setAllRecords] = useState<VisaRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+
   const [feedbackDialog, setFeedbackDialog] = useState<{
     open: boolean;
     type: "approve" | "reject";
@@ -122,7 +61,24 @@ const VisaManagement: React.FC = () => {
     record: null,
   });
 
-  const records = tabValue === 0 ? mockInProgressRecords : mockAllRecords;
+  const fetchRecords = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/hr/visa-overview");
+      setInProgressRecords(res.data.inProgress || []);
+      setAllRecords(res.data.all || []);
+    } catch (err) {
+      console.error("Failed to fetch visa records:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  const records = tabValue === 0 ? inProgressRecords : allRecords;
 
   const handleApprove = (record: VisaRecord) => {
     setFeedbackDialog({ open: true, type: "approve", record });
@@ -132,14 +88,38 @@ const VisaManagement: React.FC = () => {
     setFeedbackDialog({ open: true, type: "reject", record });
   };
 
-  const handleFeedbackSubmit = (feedback: string) => {
-    console.log(
-      `${feedbackDialog.type}d:`,
-      feedbackDialog.record?.employeeName,
-      "Feedback:",
-      feedback,
-    );
-    setFeedbackDialog({ open: false, type: "approve", record: null });
+  const handleFeedbackSubmit = async (feedback: string) => {
+    if (!feedbackDialog.record) return;
+
+    try {
+      if (feedbackDialog.type === "approve") {
+        await api.post(`/hr/documents/${feedbackDialog.record.id}/approve`);
+      } else {
+        await api.post(`/hr/documents/${feedbackDialog.record.id}/reject`, {
+          feedback,
+        });
+      }
+
+      await fetchRecords();
+    } catch (err) {
+      console.error("Failed to update document:", err);
+    } finally {
+      setFeedbackDialog({ open: false, type: "approve", record: null });
+    }
+  };
+
+  const handleViewOrDownload = async (record: VisaRecord) => {
+    if (!record.documentKey) return;
+
+    try {
+      const res = await api.post("/uploads/presign-get", {
+        key: record.documentKey,
+      });
+
+      window.open(res.data.downloadUrl, "_blank");
+    } catch (err) {
+      console.error("Failed to get download url", err);
+    }
   };
 
   const getDaysRemainingColor = (days: number) => {
@@ -169,8 +149,8 @@ const VisaManagement: React.FC = () => {
       <Card>
         <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
           <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
-            <Tab label={`In Progress (${mockInProgressRecords.length})`} />
-            <Tab label={`All (${mockAllRecords.length})`} />
+            <Tab label={`In Progress (${inProgressRecords.length})`} />
+            <Tab label={`All (${allRecords.length})`} />
           </Tabs>
         </Box>
 
@@ -188,135 +168,127 @@ const VisaManagement: React.FC = () => {
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
+
             <TableBody>
-              {records.map((record) => (
-                <TableRow key={record.id} hover>
-                  <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Avatar
-                        sx={{
-                          bgcolor: theme.palette.primary.main,
-                          width: 36,
-                          height: 36,
-                        }}
-                      >
-                        {record.employeeName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {record.employeeName}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{ color: theme.palette.text.secondary }}
-                        >
-                          {record.email}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={record.visaType}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>{record.startDate}</TableCell>
-                  <TableCell>{record.endDate}</TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color: getDaysRemainingColor(record.daysRemaining),
-                      }}
-                    >
-                      {record.daysRemaining} days
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <Typography variant="body2">
-                        {record.currentStep}
-                      </Typography>
-                      <StatusChip status={record.stepStatus} size="small" />
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{ color: theme.palette.text.secondary }}
-                    >
-                      {record.nextAction}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    {record.stepStatus === "pending" && (
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 0.5,
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <Tooltip title="View Document">
-                          <IconButton size="small">
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download">
-                          <IconButton size="small">
-                            <DownloadIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Approve">
-                          <IconButton
-                            size="small"
-                            sx={{ color: theme.palette.success.main }}
-                            onClick={() => handleApprove(record)}
-                          >
-                            <ApproveIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Reject">
-                          <IconButton
-                            size="small"
-                            sx={{ color: theme.palette.error.main }}
-                            onClick={() => handleReject(record)}
-                          >
-                            <RejectIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        {record.currentStep === "I-983" && (
-                          <Tooltip title="Send Notification">
-                            <IconButton size="small" color="primary">
-                              <SendIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    )}
+              {loading && (
+                <TableRow>
+                  <TableCell colSpan={8} align="center">
+                    Loading...
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
+
+              {!loading &&
+                records.map((record) => (
+                  <TableRow key={record.id} hover>
+                    <TableCell>
+                      <Box sx={{ display: "flex", gap: 2 }}>
+                        <Avatar>
+                          {record.employeeName
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight={500}>
+                            {record.employeeName}
+                          </Typography>
+                          <Typography variant="caption">
+                            {record.email}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip label={record.visaType} size="small" />
+                    </TableCell>
+
+                    <TableCell>{record.startDate}</TableCell>
+                    <TableCell>{record.endDate}</TableCell>
+
+                    <TableCell>
+                      <Typography
+                        fontWeight={600}
+                        color={getDaysRemainingColor(record.daysRemaining)}
+                      >
+                        {record.daysRemaining} days
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        <Typography>{record.currentStep}</Typography>
+                        <StatusChip status={record.stepStatus} size="small" />
+                      </Box>
+                    </TableCell>
+
+                    <TableCell>{record.nextAction}</TableCell>
+
+                    <TableCell align="right">
+                      {record.stepStatus === "pending" && (
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          <Tooltip title="View">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewOrDownload(record)}
+                            >
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Download">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewOrDownload(record)}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Approve">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handleApprove(record)}
+                            >
+                              <ApproveIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          <Tooltip title="Reject">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleReject(record)}
+                            >
+                              <RejectIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+
+                          {record.currentStep === "I-983" && (
+                            <Tooltip title="Send Notification">
+                              <IconButton size="small" color="primary">
+                                <SendIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Box>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+              {!loading && records.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} align="center">
+                    No records found
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
-
-        {records.length === 0 && (
-          <Box sx={{ p: 4, textAlign: "center" }}>
-            <Typography
-              variant="body1"
-              sx={{ color: theme.palette.text.secondary }}
-            >
-              No records found
-            </Typography>
-          </Box>
-        )}
       </Card>
 
       <FeedbackDialog
