@@ -30,10 +30,12 @@ type OnboardingStatus = "never-submitted" | "pending" | "approved" | "rejected";
 
 interface DocumentItem {
   _id: string;
-  fileName: string;
+  fileName: string | null;
   type: string;
   category: string;
-  uploadedAt?: string;
+  status: "not-started" | "pending" | "approved" | "rejected";
+  uploadedAt?: string | null;
+  hrFeedback?: string | null;
 }
 
 const OnboardingApplication: React.FC = () => {
@@ -443,73 +445,102 @@ const OnboardingApplication: React.FC = () => {
           <Grid container spacing={3}>
             {/* Driver License */}
             <Grid item xs={12} md={6}>
-              <FileUpload
-                label="Driver's License / State ID *"
-                onFileSelect={handleFileSelect("id_card", "onboarding")}
-                helperText="Upload a clear copy of your ID"
-              />
-
-              {documents
-                .filter(
-                  (doc) =>
-                    doc.type === "id_card" && doc.category === "onboarding",
-                )
-                .map((doc, index) => (
-                  <Typography
-                    key={doc._id ?? `id_card-${index}`}
-                    sx={{ mt: 1, fontSize: 14 }}
-                  >
-                    {doc.fileName}
-                  </Typography>
-                ))}
+              {documents.some(
+                (doc) => doc.type === "id_card" && doc.fileName,
+              ) ? (
+                documents
+                  .filter((doc) => doc.type === "id_card")
+                  .map((doc) => (
+                    <Box
+                      key={doc._id}
+                      sx={{
+                        p: 2,
+                        border: "1px solid #ddd",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography fontWeight={600}>
+                        ✅ {doc.fileName}
+                      </Typography>
+                      <Typography variant="caption">
+                        Status: {doc.status}
+                      </Typography>
+                    </Box>
+                  ))
+              ) : (
+                <FileUpload
+                  label="Driver's License / State ID *"
+                  onFileSelect={handleFileSelect("id_card", "onboarding")}
+                  helperText="Upload a clear copy of your ID"
+                />
+              )}
             </Grid>
 
             {/* Work Authorization */}
             <Grid item xs={12} md={6}>
-              <FileUpload
-                label="Work Authorization Document *"
-                onFileSelect={handleFileSelect("work_auth", "onboarding")}
-                helperText="OPT EAD, Green Card, etc."
-              />
-
-              {documents
-                .filter(
-                  (doc) =>
-                    doc.type === "work_auth" && doc.category === "onboarding",
-                )
-                .map((doc, index) => (
-                  <Typography
-                    key={doc._id ?? `work_auth-${index}`}
-                    sx={{ mt: 1, fontSize: 14 }}
-                  >
-                    {doc.fileName}
-                  </Typography>
-                ))}
+              {documents.some(
+                (doc) => doc.type === "work_auth" && doc.fileName,
+              ) ? (
+                documents
+                  .filter((doc) => doc.type === "work_auth")
+                  .map((doc) => (
+                    <Box
+                      key={doc._id}
+                      sx={{
+                        p: 2,
+                        border: "1px solid #ddd",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography fontWeight={600}>
+                        ✅ {doc.fileName}
+                      </Typography>
+                      <Typography variant="caption">
+                        Status: {doc.status}
+                      </Typography>
+                    </Box>
+                  ))
+              ) : (
+                <FileUpload
+                  label="Work Authorization Document *"
+                  onFileSelect={handleFileSelect("work_auth", "onboarding")}
+                  helperText="OPT EAD, Green Card, etc."
+                />
+              )}
             </Grid>
 
             {/* Profile Photo */}
             <Grid item xs={12} md={6}>
-              <FileUpload
-                label="Profile Photo"
-                accept=".jpg,.jpeg,.png"
-                onFileSelect={handleFileSelect("profile_photo", "onboarding")}
-                helperText="Professional headshot (optional)"
-              />
-
-              {documents
-                .filter(
-                  (doc) =>
-                    doc.type === "profile_photo" &&
-                    doc.category === "onboarding",
-                )
-                .map((doc, index) => (
-                  <Typography
-                    key={doc._id ?? `profile_photo-${index}`}
-                    sx={{ mt: 1, fontSize: 14 }}
-                  >
-                    {doc.fileName}
-                  </Typography>
-                ))}
+              {documents.some(
+                (doc) => doc.type === "profile_photo" && doc.fileName,
+              ) ? (
+                documents
+                  .filter((doc) => doc.type === "profile_photo")
+                  .map((doc) => (
+                    <Box
+                      key={doc._id}
+                      sx={{
+                        p: 2,
+                        border: "1px solid #ddd",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography fontWeight={600}>
+                        ✅ {doc.fileName}
+                      </Typography>
+                      <Typography variant="caption">
+                        Status: {doc.status}
+                      </Typography>
+                    </Box>
+                  ))
+              ) : (
+                <FileUpload
+                  label="Profile Photo"
+                  accept=".jpg,.jpeg,.png"
+                  onFileSelect={handleFileSelect("profile_photo", "onboarding")}
+                  helperText="Professional headshot (optional)"
+                />
+              )}
             </Grid>
           </Grid>
         );
