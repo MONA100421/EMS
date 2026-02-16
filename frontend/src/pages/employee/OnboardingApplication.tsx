@@ -184,7 +184,7 @@ const OnboardingApplication: React.FC = () => {
 
         const res = await api.get("/onboarding/me");
         setVersion(res.data.application.version);
-        const docsRes = await api.get("/documents/my");
+        const docsRes = await api.get("/documents/me");
         setDocuments(docsRes.data.documents || []);
 
       } catch (err) {
@@ -450,9 +450,15 @@ const OnboardingApplication: React.FC = () => {
               />
 
               {documents
-                .filter((doc) => doc.type === "id_card")
-                .map((doc) => (
-                  <Typography key={doc._id} sx={{ mt: 1, fontSize: 14 }}>
+                .filter(
+                  (doc) =>
+                    doc.type === "id_card" && doc.category === "onboarding",
+                )
+                .map((doc, index) => (
+                  <Typography
+                    key={doc._id ?? `id_card-${index}`}
+                    sx={{ mt: 1, fontSize: 14 }}
+                  >
                     {doc.fileName}
                   </Typography>
                 ))}
@@ -467,9 +473,15 @@ const OnboardingApplication: React.FC = () => {
               />
 
               {documents
-                .filter((doc) => doc.type === "work_auth")
-                .map((doc) => (
-                  <Typography key={doc._id} sx={{ mt: 1, fontSize: 14 }}>
+                .filter(
+                  (doc) =>
+                    doc.type === "work_auth" && doc.category === "onboarding",
+                )
+                .map((doc, index) => (
+                  <Typography
+                    key={doc._id ?? `work_auth-${index}`}
+                    sx={{ mt: 1, fontSize: 14 }}
+                  >
                     {doc.fileName}
                   </Typography>
                 ))}
@@ -485,9 +497,16 @@ const OnboardingApplication: React.FC = () => {
               />
 
               {documents
-                .filter((doc) => doc.type === "profile_photo")
-                .map((doc) => (
-                  <Typography key={doc._id} sx={{ mt: 1, fontSize: 14 }}>
+                .filter(
+                  (doc) =>
+                    doc.type === "profile_photo" &&
+                    doc.category === "onboarding",
+                )
+                .map((doc, index) => (
+                  <Typography
+                    key={doc._id ?? `profile_photo-${index}`}
+                    sx={{ mt: 1, fontSize: 14 }}
+                  >
                     {doc.fileName}
                   </Typography>
                 ))}

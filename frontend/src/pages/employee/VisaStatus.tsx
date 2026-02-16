@@ -99,7 +99,7 @@ const VisaStatus: React.FC = () => {
   useEffect(() => {
     const fetchDocs = async () => {
       try {
-        const res = await api.get("/documents/my");
+        const res = await api.get("/documents/me");
         const docs = res.data.documents;
         setSteps(transformDocs(docs));
       } catch (err) {
