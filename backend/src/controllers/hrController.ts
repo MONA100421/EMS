@@ -5,6 +5,24 @@ import RegistrationToken from "../models/RegistrationToken";
 import { sendInviteEmail } from "../utils/email";
 import crypto from "crypto";
 import mongoose from "mongoose";
+import EmployeeProfile from "../models/EmployeeProfile";
+import NotificationModel from "../models/Notification";
+import { NotificationTypes } from "../utils/notificationTypes";
+
+const dbToUIStatus = (s: string | undefined) => {
+  switch (s) {
+    case "never_submitted":
+      return "never-submitted";
+    case "pending":
+      return "pending";
+    case "approved":
+      return "approved";
+    case "rejected":
+      return "rejected";
+    default:
+      return "never-submitted";
+  }
+};
 
 /**
  * GET /api/hr/employees
@@ -286,3 +304,178 @@ export const getEmployeeById = async (req: Request, res: Response) => {
     return res.status(500).json({ ok: false });
   }
 };
+
+// GET /api/hr/onboarding
+export const listOnboardingsForHR = async (req: Request, res: Response) => {
+  try {
+    const apps = await OnboardingApplication.find()
+      .populate("user", "username email")
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    const grouped = {
+      pending: [] as any[],
+      approved: [] as any[],
+      rejected: [] as any[],
+    };
+
+    apps.forEach((a: any) => {
+      const record = {
+        id: a._id,
+        employee: a.user
+          ? {
+              id: a.user._id,
+              username: a.user.username || "Unknown",
+              email: a.user.email || "N/A",
+            }
+          : {
+              id: "",
+              username: "Unknown",
+              email: "N/A",
+            },
+        status: dbToUIStatus(a.status),
+        submittedAt: a.submittedAt ?? a.createdAt,
+        version: a.__v,
+      };
+      if (grouped[a.status as keyof typeof grouped]) {
+        grouped[a.status as keyof typeof grouped].push(record);
+      }
+    });
+
+    return res.json({ ok: true, grouped });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+};
+
+// POST /api/hr/onboarding/:id/review
+export const reviewOnboarding = async (req: Request, res: Response) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const hrUser = (req as any).user;
+    const { id } = req.params;
+    const { decision, feedback } = req.body;
+
+    if (!["approved", "rejected"].includes(decision)) {
+      await session.abortTransaction();
+      return res.status(400).json({ ok: false, message: "Invalid decision" });
+    }
+
+    const app = await OnboardingApplication.findById(id).session(session);
+
+    if (!app) {
+      await session.abortTransaction();
+      return res
+        .status(404)
+        .json({ ok: false, message: "Application not found" });
+    }
+
+    if (app.status === "approved") {
+      await session.abortTransaction();
+      return res.status(400).json({ ok: false, message: "Already approved" });
+    }
+
+    if (decision === "approved") {
+      const formData = app.formData || {};
+
+      await User.findByIdAndUpdate(
+        app.user,
+        {
+          $set: {
+            "profile.firstName": formData.firstName,
+            "profile.lastName": formData.lastName,
+            "workAuthorization.authType": formData.workAuthType,
+            "workAuthorization.startDate": formData.startDate,
+            "workAuthorization.endDate": formData.endDate,
+          },
+        },
+        { session }
+      );
+    }
+
+
+    app.status = decision;
+    app.hrFeedback = feedback || "";
+    app.reviewedAt = new Date();
+    app.history.push({
+      status: decision,
+      updatedAt: new Date(),
+      action: `HR Review: ${decision}`,
+    });
+
+    await app.save({ session });
+    await session.commitTransaction();
+
+    setImmediate(async () => {
+      try {
+        const employee = await User.findById(app.user);
+
+        if (employee) {
+          await NotificationModel.create({
+            user: employee._id,
+            type:
+              decision === "approved"
+                ? NotificationTypes.ONBOARDING_REVIEW_APPROVED
+                : NotificationTypes.ONBOARDING_REVIEW_REJECTED,
+            title: `Onboarding ${decision === "approved" ? "Approved" : "Rejected"}`,
+            message: feedback || "Your application status has been updated.",
+          });
+
+          if (employee.email) {
+            console.log("Email would be sent here (queue disabled for MVP)");
+          }
+        }
+      } catch (e) {
+        console.error("Notification Side-effect error:", e);
+      }
+    });
+
+    return res.json({ ok: true, status: dbToUIStatus(app.status) });
+  } catch (err) {
+    await session.abortTransaction();
+    console.error("reviewOnboarding error", err);
+    return res.status(500).json({ ok: false, message: "Server error" });
+  } finally {
+    session.endSession();
+  }
+};
+
+// GET /api/hr/onboarding/:id
+export const getOnboardingDetailForHR = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const app = await OnboardingApplication.findById(id)
+      .populate("user", "username email")
+      .lean();
+
+    if (!app)
+      return res
+        .status(404)
+        .json({ ok: false, message: "Application not found" });
+
+    return res.json({
+      ok: true,
+      application: {
+        id: app._id,
+        status: dbToUIStatus(app.status),
+        formData: app.formData || {},
+        hrFeedback: app.hrFeedback || null,
+        submittedAt: app.submittedAt ?? null,
+        reviewedAt: app.reviewedAt ?? null,
+        version: app.__v,
+        employee: app.user
+          ? {
+              id: (app.user as any)._id,
+              username: (app.user as any).username,
+              email: (app.user as any).email,
+            }
+          : null,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Server error" });
+  }
+};
+

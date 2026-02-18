@@ -1,16 +1,11 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import OnboardingApplication from "../models/OnboardingApplication";
 import Document from "../models/Document";
-import User from "../models/User";
-import NotificationModel from "../models/Notification";
-//import { enqueueOnboardingDecisionEmail } from "../queues/emailQueue";
-import { NotificationTypes } from "../utils/notificationTypes";
-import EmployeeProfile from "../models/EmployeeProfile";
-import mongoose from "mongoose";
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   never_submitted: ["pending"],
-  pending: ["approved", "rejected"],
+  pending: [],
   rejected: ["pending"],
   approved: [],
 };
@@ -36,12 +31,11 @@ const dbToUIStatus = (s: string | undefined) => {
 export const getMyOnboarding = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    if (!user)
+    if (!user) {
       return res.status(401).json({ ok: false, message: "Unauthenticated" });
+    }
 
-    let app = await OnboardingApplication.findOne({
-      user: user.userId,
-    });
+    let app = await OnboardingApplication.findOne({ user: user.userId });
 
     if (!app) {
       app = await OnboardingApplication.create({
@@ -66,29 +60,12 @@ export const getMyOnboarding = async (req: Request, res: Response) => {
 
     for (const doc of baseDocs) {
       await Document.findOneAndUpdate(
-        { user: user.userId, type: doc.type, deletedAt: null },
+        { user: user.userId, type: doc.type },
         {
           $setOnInsert: {
             user: user.userId,
             type: doc.type,
             category: doc.category,
-            status: "not_started",
-          },
-        },
-        { upsert: true },
-      );
-    }
-
-    const workAuthType = app.formData?.workAuthType;
-
-    if (workAuthType === "f1") {
-      await Document.findOneAndUpdate(
-        { user: user.userId, type: "opt_receipt", deletedAt: null },
-        {
-          $setOnInsert: {
-            user: user.userId,
-            type: "opt_receipt",
-            category: "visa",
             status: "not_started",
           },
         },
@@ -156,22 +133,6 @@ export const submitOnboarding = async (req: Request, res: Response) => {
     });
 
     await app.save({ session });
-
-    if (["f1", "opt", "opt-stem"].includes(formData.workAuthType)) {
-      await Document.findOneAndUpdate(
-        { user: user.userId, type: "opt_receipt" },
-        {
-          $setOnInsert: {
-            user: user.userId,
-            type: "opt_receipt",
-            category: "visa",
-            status: "not_started",
-          },
-        },
-        { upsert: true, session },
-      );
-    }
-
     await session.commitTransaction();
 
     return res.json({
@@ -184,223 +145,5 @@ export const submitOnboarding = async (req: Request, res: Response) => {
     return res.status(500).json({ ok: false });
   } finally {
     session.endSession();
-  }
-};
-
-// GET /api/hr/onboarding
-export const listOnboardingsForHR = async (req: Request, res: Response) => {
-  try {
-    const apps = await OnboardingApplication.find()
-      .populate("user", "username email")
-      .sort({ submittedAt: -1 })
-      .lean();
-
-    const grouped = {
-      pending: [] as any[],
-      approved: [] as any[],
-      rejected: [] as any[],
-    };
-
-    apps.forEach((a: any) => {
-      const record = {
-        id: a._id,
-        employee: a.user
-          ? { username: a.user.username, email: a.user.email }
-          : null,
-        status: dbToUIStatus(a.status),
-        submittedAt: a.submittedAt ?? a.createdAt,
-        version: a.__v,
-      };
-      if (grouped[a.status as keyof typeof grouped]) {
-        grouped[a.status as keyof typeof grouped].push(record);
-      }
-    });
-
-    return res.json({ ok: true, grouped });
-  } catch (err) {
-    return res.status(500).json({ ok: false, message: "Server error" });
-  }
-};
-
-// POST /api/hr/onboarding/:id/review
-export const reviewOnboarding = async (req: Request, res: Response) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const hrUser = (req as any).user;
-    const { id } = req.params;
-    const { decision, feedback } = req.body;
-
-    if (!["approved", "rejected"].includes(decision)) {
-      await session.abortTransaction();
-      return res.status(400).json({ ok: false, message: "Invalid decision" });
-    }
-
-    const app = await OnboardingApplication.findById(id).session(session);
-
-    if (!app) {
-      await session.abortTransaction();
-      return res
-        .status(404)
-        .json({ ok: false, message: "Application not found" });
-    }
-
-    if (app.status === "approved") {
-      await session.abortTransaction();
-      return res.status(400).json({ ok: false, message: "Already approved" });
-    }
-
-    if (decision === "approved") {
-      const formData = app.formData || {};
-
-      await User.findByIdAndUpdate(
-        app.user,
-        {
-          $set: {
-            "profile.firstName": formData.firstName,
-            "profile.lastName": formData.lastName,
-            "workAuthorization.authType": formData.workAuthType,
-          },
-        },
-        { session },
-      );
-
-      await EmployeeProfile.findOneAndUpdate(
-        { user: app.user },
-        {
-          $set: {
-            phone: formData.phone,
-            "address.street": formData.address,
-            "address.city": formData.city,
-            "address.state": formData.state,
-            "address.zipCode": formData.zipCode,
-          },
-        },
-        { upsert: true, session },
-      );
-    }
-
-    app.status = decision;
-    app.hrFeedback = feedback || "";
-    app.reviewedAt = new Date();
-    app.history.push({
-      status: decision,
-      updatedAt: new Date(),
-      action: `HR Review: ${decision}`,
-    });
-
-    await app.save({ session });
-    await session.commitTransaction();
-
-    setImmediate(async () => {
-      try {
-        const employee = await User.findById(app.user);
-
-        if (employee) {
-          await NotificationModel.create({
-            user: employee._id,
-            type:
-              decision === "approved"
-                ? NotificationTypes.ONBOARDING_REVIEW_APPROVED
-                : NotificationTypes.ONBOARDING_REVIEW_REJECTED,
-            title: `Onboarding ${decision === "approved" ? "Approved" : "Rejected"}`,
-            message: feedback || "Your application status has been updated.",
-          });
-
-          if (employee.email) {
-            console.log("Email would be sent here (queue disabled for MVP)");
-          }
-        }
-      } catch (e) {
-        console.error("Notification Side-effect error:", e);
-      }
-    });
-
-    return res.json({ ok: true, status: dbToUIStatus(app.status) });
-  } catch (err) {
-    await session.abortTransaction();
-    console.error("reviewOnboarding error", err);
-    return res.status(500).json({ ok: false, message: "Server error" });
-  } finally {
-    session.endSession();
-  }
-};
-
-// GET /api/hr/onboarding/:id
-export const getOnboardingDetailForHR = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const app = await OnboardingApplication.findById(id)
-      .populate("user", "username email")
-      .lean();
-
-    if (!app)
-      return res
-        .status(404)
-        .json({ ok: false, message: "Application not found" });
-
-    return res.json({
-      ok: true,
-      application: {
-        id: app._id,
-        status: dbToUIStatus(app.status),
-        formData: app.formData || {},
-        hrFeedback: app.hrFeedback || null,
-        submittedAt: app.submittedAt ?? null,
-        reviewedAt: app.reviewedAt ?? null,
-        version: app.__v,
-        employee: app.user
-          ? {
-              id: (app.user as any)._id,
-              username: (app.user as any).username,
-              email: (app.user as any).email,
-            }
-          : null,
-      },
-    });
-  } catch (err) {
-    return res.status(500).json({ ok: false, message: "Server error" });
-  }
-};
-
-export const approveOnboarding = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { decision, feedback } = req.body;
-
-    const app = await OnboardingApplication.findById(id);
-
-    if (!app) {
-      return res.status(404).json({ ok: false });
-    }
-
-    if (!["approved", "rejected"].includes(decision)) {
-      return res.status(400).json({ ok: false });
-    }
-
-    app.status = decision;
-    app.hrFeedback = feedback ?? "";
-    app.reviewedAt = new Date();
-    app.history.push({
-      status: decision,
-      updatedAt: new Date(),
-      action: `HR ${decision}`,
-    });
-
-    await app.save();
-
-    if (decision === "approved") {
-      await EmployeeProfile.findOneAndUpdate(
-        { user: app.user },
-        { $set: app.formData },
-        { upsert: true },
-      );
-    }
-
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error("approveOnboarding error:", err);
-    return res.status(500).json({ ok: false });
   }
 };
