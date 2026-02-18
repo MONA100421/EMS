@@ -1,20 +1,21 @@
 import { Request, Response } from "express";
-import User from "../models/User";
 import OnboardingApplication from "../models/OnboardingApplication";
 import Document from "../models/Document";
 
 export const getVisaOverview = async (_req: Request, res: Response) => {
   try {
     const apps = await OnboardingApplication.find()
-      .populate("user", "username email")
+      .populate("user", "username email workAuthorization profile")
       .lean();
 
     const out = await Promise.all(
       apps.map(async (a: any) => {
-        const workAuth = a.formData?.workAuthType;
+        if (!a.user) return null;
+
+        const user = a.user;
 
         const docs = await Document.find({
-          user: a.user._id,
+          user: user._id,
           deletedAt: null,
         }).lean();
 
@@ -44,22 +45,31 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
           }
         }
 
+        const startDate = user.workAuthorization?.startDate ?? null;
+        const endDate = user.workAuthorization?.endDate ?? null;
+
+        let daysRemaining: number | null = null;
+
+        if (endDate) {
+          const end = new Date(endDate);
+          const now = new Date();
+          end.setHours(0, 0, 0, 0);
+          now.setHours(0, 0, 0, 0);
+
+          const diff = end.getTime() - now.getTime();
+          daysRemaining = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+        }
+
         return {
           id: a._id,
-          employeeName: a.user?.username || "",
-          email: a.user?.email || "",
-          visaType: workAuth || "Not Set",
-          startDate: a.formData?.visaStart || null,
-          endDate: a.formData?.visaEnd || null,
-          daysRemaining: a.formData?.visaEnd
-            ? Math.max(
-                0,
-                Math.ceil(
-                  (new Date(a.formData.visaEnd).getTime() - Date.now()) /
-                    (1000 * 60 * 60 * 24),
-                ),
-              )
-            : null,
+          employeeName:
+            `${user.profile?.firstName ?? ""} ${user.profile?.lastName ?? ""}`.trim() ||
+            user.username,
+          email: user.email,
+          visaType: user.workAuthorization?.authType ?? "Not Set",
+          startDate,
+          endDate,
+          daysRemaining,
           currentStep,
           stepStatus,
           nextAction,
@@ -67,13 +77,17 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
       }),
     );
 
-    const inProgress = out.filter((r) => r.stepStatus !== "approved");
-    const all = out;
+    const filtered = out.filter(Boolean);
 
-    return res.json({ ok: true, inProgress, all });
+    const inProgress = filtered.filter((r: any) => r.stepStatus !== "approved");
+
+    return res.json({
+      ok: true,
+      inProgress,
+      all: filtered,
+    });
   } catch (err) {
     console.error("getVisaOverview error", err);
     return res.status(500).json({ ok: false });
   }
 };
-

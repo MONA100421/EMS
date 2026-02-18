@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import EmployeeProfile from "../models/EmployeeProfile";
 import NotificationModel from "../models/Notification";
 import { NotificationTypes } from "../utils/notificationTypes";
+import Document from "../models/Document";
 
 const dbToUIStatus = (s: string | undefined) => {
   switch (s) {
@@ -325,8 +326,8 @@ export const listOnboardingsForHR = async (req: Request, res: Response) => {
         employee: a.user
           ? {
               id: a.user._id,
-              username: a.user.username || "Unknown",
-              email: a.user.email || "N/A",
+              fullName: `${a.user.profile?.firstName ?? ""} ${a.user.profile?.lastName ?? ""}`,
+              email: a.user.email,
             }
           : {
               id: "",
@@ -386,12 +387,13 @@ export const reviewOnboarding = async (req: Request, res: Response) => {
           $set: {
             "profile.firstName": formData.firstName,
             "profile.lastName": formData.lastName,
+
             "workAuthorization.authType": formData.workAuthType,
-            "workAuthorization.startDate": formData.startDate,
-            "workAuthorization.endDate": formData.endDate,
+            "workAuthorization.startDate": formData.visaStart,
+            "workAuthorization.endDate": formData.visaEnd,
           },
         },
-        { session }
+        { session },
       );
     }
 
@@ -478,4 +480,46 @@ export const getOnboardingDetailForHR = async (req: Request, res: Response) => {
     return res.status(500).json({ ok: false, message: "Server error" });
   }
 };
+
+export const approveDocument = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const doc = await Document.findById(id);
+    if (!doc) {
+      return res.status(404).json({ ok: false, message: "Document not found" });
+    }
+
+    doc.status = "approved";
+    doc.hrFeedback = "";
+    await doc.save();
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("approveDocument error:", err);
+    return res.status(500).json({ ok: false });
+  }
+};
+
+export const rejectDocument = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { feedback } = req.body;
+
+    const doc = await Document.findById(id);
+    if (!doc) {
+      return res.status(404).json({ ok: false });
+    }
+
+    doc.status = "rejected";
+    doc.hrFeedback = feedback || "";
+    await doc.save();
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("rejectDocument error:", err);
+    return res.status(500).json({ ok: false });
+  }
+};
+
 

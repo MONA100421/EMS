@@ -264,3 +264,41 @@ export const getDocumentsByUser = async (req: Request, res: Response) => {
   }
 };
 
+// GET /api/documents/:id/download
+export const downloadDocumentById = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+
+    const doc = await Document.findById(id);
+    if (!doc || !doc.fileUrl) {
+      return res.status(404).json({ ok: false, message: "Document not found" });
+    }
+
+    const isOwner = doc.user.toString() === user.userId;
+    const isHR = user.role === "hr";
+
+    if (!isOwner && !isHR) {
+      return res.status(403).json({ ok: false, message: "Forbidden" });
+    }
+
+    const key = doc.fileUrl.replace(`s3://${BUCKET}/`, "");
+
+    const getCommand = new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    });
+
+    const downloadUrl = await getSignedUrl(s3Client, getCommand, {
+      expiresIn: 3600,
+    });
+
+    return res.json({ ok: true, downloadUrl });
+  } catch (err) {
+    console.error("downloadDocumentById error:", err);
+    return res.status(500).json({ ok: false });
+  }
+};
+
+
+

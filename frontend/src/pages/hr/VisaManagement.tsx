@@ -30,7 +30,7 @@ import FeedbackDialog from "../../components/common/FeedbackDialog";
 import api from "../../lib/api";
 
 interface VisaRecord {
-  id: string;
+  id: string | null;
   employeeName: string;
   email: string;
   visaType: string;
@@ -109,16 +109,15 @@ const VisaManagement: React.FC = () => {
   };
 
   const handleViewOrDownload = async (record: VisaRecord) => {
-    if (!record.documentKey) return;
+    if (!record.id) return;
 
     try {
-      const res = await api.post("/uploads/presign-get", {
-        key: record.documentKey,
-      });
-
-      window.open(res.data.downloadUrl, "_blank");
+      const res = await api.get(`/uploads/documents/${record.id}/download`);
+      if (res.data.ok) {
+        window.open(res.data.downloadUrl, "_blank");
+      }
     } catch (err) {
-      console.error("Failed to get download url", err);
+      console.error("Preview failed:", err);
     }
   };
 
@@ -226,7 +225,7 @@ const VisaManagement: React.FC = () => {
                     <TableCell>{record.nextAction}</TableCell>
 
                     <TableCell align="right">
-                      {record.stepStatus === "pending" && (
+                      {record.stepStatus === "pending" && record.id && (
                         <Box sx={{ display: "flex", gap: 1 }}>
                           <Tooltip title="View">
                             <IconButton

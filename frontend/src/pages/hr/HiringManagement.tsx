@@ -53,14 +53,13 @@ interface TokenRecord {
 interface OnboardingApplication {
   id: string;
   employee: {
-    username: string;
+    id: string;
+    fullName: string;
     email: string;
-    name?: string;
   };
   status: "pending" | "approved" | "rejected";
   submittedAt: string;
   version: number;
-  feedback?: string;
   hrFeedback?: string;
 }
 
@@ -450,13 +449,18 @@ const HiringManagement: React.FC = () => {
                             height: 36,
                           }}
                         >
-                          {app.employee?.username
-                            ? app.employee.username[0]
+                          {app.employee.fullName
+                            ? app.employee.fullName
+                                .split(" ")
+                                .filter(Boolean)
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
                             : "?"}
                         </Avatar>
                         <Box>
                           <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                            {app.employee?.username?.[0] ?? "?"}
+                            {app.employee?.fullName}
                           </Typography>
                           <Typography
                             variant="caption"
@@ -477,7 +481,7 @@ const HiringManagement: React.FC = () => {
                           variant="body2"
                           sx={{ color: theme.palette.text.secondary }}
                         >
-                          {app.feedback ?? app.hrFeedback ?? "-"}
+                          {app.hrFeedback ?? "-"}
                         </Typography>
                       </TableCell>
                     )}
@@ -545,10 +549,7 @@ const HiringManagement: React.FC = () => {
             ? "Approve Application"
             : "Reject Application"
         }
-        itemName={
-          feedbackDialog.application?.employee?.name ??
-          feedbackDialog.application?.employee?.username
-        }
+        itemName={feedbackDialog.application?.employee?.fullName ?? ""}
         requireFeedback={feedbackDialog.type === "reject"}
         onSubmit={handleFeedbackSubmit}
         onCancel={() =>
