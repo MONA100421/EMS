@@ -69,6 +69,9 @@ export const updateMyProfile = async (req: Request, res: Response) => {
     if (payload.preferredName !== undefined)
       u.profile.preferredName = payload.preferredName;
 
+    if (payload.photoUrl !== undefined) u.profile.photoUrl = payload.photoUrl;
+
+
     // Address
     if (payload.address) {
       if (payload.address.street !== undefined)

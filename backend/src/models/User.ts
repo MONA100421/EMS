@@ -18,6 +18,7 @@ const UserSchema = new Schema(
       dob: Date,
       ssn: String,
       gender: String,
+      photoUrl: String,
 
       address: {
         street: String,

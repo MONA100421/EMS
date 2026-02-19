@@ -26,6 +26,7 @@ import {
 } from "@mui/icons-material";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import api from "../../lib/api";
+import imageCompression from "browser-image-compression";
 
 interface SectionData {
   [key: string]: string;
@@ -54,6 +55,10 @@ const PersonalInformation: React.FC = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [tempData, setTempData] = useState<SectionData>({});
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>();
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>();
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [formData, setFormData] = useState<FormDataType>({
     name: { firstName: "", lastName: "", middleName: "", preferredName: "" },
@@ -103,6 +108,8 @@ const PersonalInformation: React.FC = () => {
         const user = res.data.user || {};
         const profile = user.profile || {};
         const workAuth = user.workAuthorization || {};
+        setPhotoUrl(profile.photoUrl);
+        
 
         setFormData({
           name: {
@@ -160,6 +167,15 @@ const PersonalInformation: React.FC = () => {
 
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
 
   const handleEdit = (sectionId: string) => {
     setEditingSection(sectionId);
@@ -273,28 +289,120 @@ const PersonalInformation: React.FC = () => {
     setTempData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleProfilePhotoUpload = async (file: File) => {
+    try {
+      setUploadingPhoto(true);
+
+      const preview = URL.createObjectURL(file);
+      setPreviewUrl(preview);
+
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 0.5,
+        maxWidthOrHeight: 800,
+        useWebWorker: true,
+      });
+
+      const presign = await api.post("/uploads/presign", {
+        fileName: compressedFile.name,
+        contentType: compressedFile.type,
+        type: "profile_photo",
+        category: "onboarding",
+      });
+
+      await api.put(presign.data.uploadUrl, compressedFile, {
+        headers: {
+          "Content-Type": compressedFile.type,
+        },
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 1),
+          );
+          setUploadProgress(percent);
+        },
+      });
+
+      await api.post("/uploads/complete", {
+        fileUrl: presign.data.fileUrl,
+        fileName: compressedFile.name,
+        type: "profile_photo",
+        category: "onboarding",
+      });
+
+      await api.patch("/employee/me", {
+        photoUrl: presign.data.fileUrl,
+      });
+
+      setPhotoUrl(presign.data.fileUrl);
+      setPreviewUrl(undefined);
+    } catch (err) {
+      console.error("Profile photo upload failed:", err);
+    } finally {
+      setUploadingPhoto(false);
+      setUploadProgress(0);
+    }
+  };
+
   return (
     <Box>
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ py: 4 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 3 }}>
-            <Avatar sx={{ width: 100, height: 100 }}>
-              {formData.name.firstName?.[0]}
-              {formData.name.lastName?.[0]}
-            </Avatar>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <Avatar
+                src={previewUrl || photoUrl}
+                sx={{ width: 100, height: 100 }}
+              >
+                {formData.name.firstName?.[0]}
+                {formData.name.lastName?.[0]}
+              </Avatar>
+
+              {uploadingPhoto && (
+                <Typography variant="caption" sx={{ mt: 1 }}>
+                  Uploading {uploadProgress}%
+                </Typography>
+              )}
+
+              <Button
+                component="label"
+                variant="outlined"
+                size="small"
+                sx={{ mt: 2 }}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? "Uploading..." : "Change Photo"}
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    e.target.files &&
+                    handleProfilePhotoUpload(e.target.files[0])
+                  }
+                />
+              </Button>
+            </Box>
+
+            {/* User Info */}
             <Box>
               <Typography variant="h4" fontWeight={700}>
                 {formData.name.firstName} {formData.name.lastName}
               </Typography>
+
               <Typography variant="body2">
                 {formData.employment.title} • {formData.employment.department}
               </Typography>
+
               <Typography variant="body2">{formData.contact.email}</Typography>
             </Box>
           </Box>
         </CardContent>
       </Card>
-
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box sx={{ display: "flex", justifyContent: "space-between" }}>
