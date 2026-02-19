@@ -293,6 +293,10 @@ const PersonalInformation: React.FC = () => {
     try {
       setUploadingPhoto(true);
 
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       const preview = URL.createObjectURL(file);
       setPreviewUrl(preview);
 
@@ -363,9 +367,11 @@ const PersonalInformation: React.FC = () => {
               </Avatar>
 
               {uploadingPhoto && (
-                <Typography variant="caption" sx={{ mt: 1 }}>
-                  Uploading {uploadProgress}%
-                </Typography>
+                <Box sx={{ width: 100, mt: 1 }}>
+                  <Typography variant="caption">
+                    Uploading {uploadProgress}%
+                  </Typography>
+                </Box>
               )}
 
               <Button
