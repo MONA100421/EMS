@@ -10,31 +10,34 @@ export const notifyVisaEmployee = async (req: Request, res: Response) => {
 
     const document = await Document.findById(id).populate("user");
 
-    const stepLabels: Record<string, string> = {
+    if (!document) {
+      return res.status(404).json({ ok: false, message: "Document not found" });
+    }
+
+    const user: any = document.user;
+    if (!user) {
+      return res.status(404).json({ ok: false, message: "User not found" });
+    }
+
+    const stepLabels: Record<
+      "opt_receipt" | "opt_ead" | "i_983" | "i_20",
+      string
+    > = {
       opt_receipt: "OPT Receipt",
       opt_ead: "OPT EAD",
       i_983: "I-983",
       i_20: "I-20",
     };
 
-    if (!document) {
-      return res.status(404).json({ ok: false, message: "Document not found" });
-    }
-
-    const user: any = document.user;
-
-    if (!user) {
-      return res.status(404).json({ ok: false, message: "User not found" });
-    }
+    const readable =
+      stepLabels[document.type as keyof typeof stepLabels] || document.type;
 
     await Notification.create({
       user: user._id,
       type: "VISA_UPLOAD_REQUIRED",
       title: "Visa document upload required",
-      message: `Please upload your ${stepLabels[document.type]} document.`,
+      message: `Please upload your ${readable} document.`,
     });
-
-    console.log("Visa upload notification created for:", user.email);
 
     return res.json({ ok: true });
   } catch (err) {
