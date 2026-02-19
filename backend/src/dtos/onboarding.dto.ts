@@ -29,6 +29,6 @@ export interface OnboardingFormDTO {
   workAuthType: WorkAuthType;
   workAuthOther?: string;
 
-  visaStart?: string;
-  visaEnd?: string;
+  startDate?: string;
+  endDate?: string;
 }

@@ -37,7 +37,7 @@ interface DocumentItem {
   fileName: string | null;
   type: string;
   category: string;
-  status: "not-started" | "pending" | "approved" | "rejected";
+  status: "not_started" | "pending" | "approved" | "rejected";
   uploadedAt?: string | null;
   hrFeedback?: string | null;
 }

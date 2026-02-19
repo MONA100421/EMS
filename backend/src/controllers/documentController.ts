@@ -9,7 +9,7 @@ import { validateVisaOrderForUser, getNextVisaStep } from "../utils/visaOrder";
 const dbToUIStatus = (s: string) => {
   switch (s) {
     case "not_started":
-      return "not-started";
+      return "not_started";
     case "pending":
       return "pending";
     case "approved":
@@ -17,7 +17,7 @@ const dbToUIStatus = (s: string) => {
     case "rejected":
       return "rejected";
     default:
-      return "not-started";
+      return "not_started";
   }
 };
 

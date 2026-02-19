@@ -389,8 +389,8 @@ export const reviewOnboarding = async (req: Request, res: Response) => {
             "profile.lastName": formData.lastName,
 
             "workAuthorization.authType": formData.workAuthType,
-            "workAuthorization.startDate": formData.startDate,
-            "workAuthorization.endDate": formData.endDate,
+            "workAuthorization.startDate": formData.visaStart,
+            "workAuthorization.endDate": formData.visaEnd,
           },
         },
         { session },

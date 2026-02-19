@@ -10,6 +10,13 @@ export const notifyVisaEmployee = async (req: Request, res: Response) => {
 
     const document = await Document.findById(id).populate("user");
 
+    const stepLabels: Record<string, string> = {
+      opt_receipt: "OPT Receipt",
+      opt_ead: "OPT EAD",
+      i_983: "I-983",
+      i_20: "I-20",
+    };
+
     if (!document) {
       return res.status(404).json({ ok: false, message: "Document not found" });
     }
@@ -24,7 +31,7 @@ export const notifyVisaEmployee = async (req: Request, res: Response) => {
       user: user._id,
       type: "VISA_UPLOAD_REQUIRED",
       title: "Visa document upload required",
-      message: `Please upload your ${document.type} document.`,
+      message: `Please upload your ${stepLabels[document.type]} document.`,
     });
 
     console.log("Visa upload notification created for:", user.email);
@@ -127,7 +134,7 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
           currentStep = "All Documents Approved";
           stepStatus = "approved";
           nextAction = "Completed";
-          actionType = "none";
+          actionType = "none"; 
         }
 
         let daysRemaining: number | null = null;
@@ -157,6 +164,14 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
           stepStatus,
           nextAction,
           actionType,
+          approvedDocuments: docs
+            .filter((d) => d.status === "approved")
+            .map((d) => ({
+              id: d._id,
+              type: d.type,
+              fileName: d.fileName,
+              fileUrl: d.fileUrl,
+            })),
         };
       }),
     );

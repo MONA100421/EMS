@@ -269,7 +269,15 @@ const AppLayout: React.FC = () => {
               sx: { width: 200, mt: 1 },
             }}
           >
-            <MenuItem onClick={() => navigate("/employee/personal-info")}>
+            <MenuItem
+              onClick={() =>
+                navigate(
+                  user?.role === "hr"
+                    ? "/hr/employees"
+                    : "/employee/personal-info",
+                )
+              }
+            >
               <ListItemIcon>
                 <PersonIcon fontSize="small" />
               </ListItemIcon>

@@ -31,7 +31,7 @@ import StatusChip from "../../components/common/StatusChip";
 import api from "../../lib/api";
 
 
-type StepStatus = "not-started" | "pending" | "approved" | "rejected";
+type StepStatus = "not_started" | "pending" | "approved" | "rejected";
 
 interface VisaStep {
   id: string;
@@ -47,7 +47,7 @@ interface VisaStep {
 type RawDoc = {
   type: string;
   fileName?: string;
-  status?: "not-started" | "pending" | "approved" | "rejected";
+  status?: "not_started" | "pending" | "approved" | "rejected";
   feedback?: string;
   uploadedAt?: string;
   fileUrl?: string;
@@ -59,26 +59,26 @@ const transformDocs = (docs: RawDoc[]): VisaStep[] => {
       id: "opt_receipt",
       title: "OPT Receipt",
       description: "Upload your OPT Receipt Notice (I-797C)",
-      status: "not-started",
+      status: "not_started",
     },
     {
       id: "opt_ead",
       title: "EAD Card",
       description: "Upload your Employment Authorization Document",
-      status: "not-started",
+      status: "not_started",
     },
     {
       id: "i_983",
       title: "I-983 Form",
       description:
         "Download, complete, and upload the I-983 Training Plan form",
-      status: "not-started",
+      status: "not_started",
     },
     {
       id: "i_20",
       title: "I-20",
       description: "Upload your updated I-20 with STEM extension",
-      status: "not-started",
+      status: "not_started",
     },
   ];
 
@@ -312,8 +312,8 @@ const VisaStatus: React.FC = () => {
                   optional={
                     <StatusChip
                       status={
-                        step.status === "not-started"
-                          ? "not-started"
+                        step.status === "not_started"
+                          ? "not_started"
                           : (step.status as StatusType)
                       }
                       size="small"

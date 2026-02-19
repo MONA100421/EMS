@@ -41,6 +41,12 @@ interface VisaRecord {
   nextAction: string;
   documentKey?: string;
   actionType: "review" | "notify" | "none";
+  approvedDocuments?: {
+    id: string;
+    type: string;
+    fileName: string;
+    fileUrl: string;
+  }[];
 }
 
 const VisaManagement: React.FC = () => {
@@ -238,7 +244,58 @@ const VisaManagement: React.FC = () => {
                       </Box>
                     </TableCell>
 
-                    <TableCell>{record.nextAction}</TableCell>
+                    <TableCell>
+                      <Box>
+                        <Typography variant="body2">
+                          {record.nextAction}
+                        </Typography>
+
+                        {tabValue === 1 &&
+                          record.approvedDocuments?.length > 0 && (
+                            <Box sx={{ mt: 1 }}>
+                              {record.approvedDocuments.map((doc) => (
+                                <Box
+                                  key={doc.id}
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                    backgroundColor: theme.palette.grey[100],
+                                    px: 1,
+                                    py: 0.5,
+                                    borderRadius: 1,
+                                  }}
+                                >
+                                  <Typography variant="caption">
+                                    {doc.fileName}
+                                  </Typography>
+
+                                  <IconButton
+                                    size="small"
+                                    onClick={async () => {
+                                      try {
+                                        const res = await api.get(
+                                          `/documents/${doc.id}/download`,
+                                        );
+                                        if (res.data.ok) {
+                                          window.open(
+                                            res.data.downloadUrl,
+                                            "_blank",
+                                          );
+                                        }
+                                      } catch (err) {
+                                        console.error("Download failed", err);
+                                      }
+                                    }}
+                                  >
+                                    <DownloadIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              ))}
+                            </Box>
+                          )}
+                      </Box>
+                    </TableCell>
 
                     <TableCell align="right">
                       <Box sx={{ display: "flex", gap: 1 }}>

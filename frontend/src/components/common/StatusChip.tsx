@@ -7,7 +7,7 @@ export type StatusType =
   | "rejected"
   | "in-progress"
   | "completed"
-  | "not-started"
+  | "not_started"
   | "active"
   | "inactive"
   | "expired"
@@ -48,7 +48,7 @@ const statusConfig: Record<
     color: "success",
     sx: { backgroundColor: "#E8F5E9", color: "#2E7D32" },
   },
-  "not-started": {
+  "not_started": {
     label: "Not Started",
     color: "default",
     sx: { backgroundColor: "#F5F5F5", color: "#616161" },
