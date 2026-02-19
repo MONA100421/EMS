@@ -23,6 +23,8 @@ import EmployeeProfiles from "./pages/hr/EmployeeProfiles";
 import EmployeeProfileDetail from "./pages/hr/EmployeeProfileDetail";
 import VisaManagement from "./pages/hr/VisaManagement";
 import HiringManagement from "./pages/hr/HiringManagement";
+import OnboardingDetail from "./pages/hr/OnboardingDetail";
+
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{
@@ -102,8 +104,9 @@ const AppRoutes: React.FC = () => {
         <Route path="employees/:id" element={<EmployeeProfileDetail />} />
         <Route path="visa-management" element={<VisaManagement />} />
         <Route path="hiring" element={<HiringManagement />} />
+        <Route path="onboarding/:id" element={<OnboardingDetail />} />
       </Route>
-
+      
       {/* Catch all - redirect to root */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

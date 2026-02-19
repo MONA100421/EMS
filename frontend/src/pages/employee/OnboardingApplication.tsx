@@ -324,13 +324,6 @@ const OnboardingApplication: React.FC = () => {
                   labelId="gender-label"
                   value={formData.gender}
                   label="Gender"
-                  displayEmpty
-                  renderValue={(selected) => {
-                    if (!selected) {
-                      return <em>Select...</em>;
-                    }
-                    return selected;
-                  }}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -338,6 +331,9 @@ const OnboardingApplication: React.FC = () => {
                     }))
                   }
                 >
+                  <MenuItem value="">
+                    <em>Select...</em>
+                  </MenuItem>
                   <MenuItem value="male">Male</MenuItem>
                   <MenuItem value="female">Female</MenuItem>
                   <MenuItem value="other">Other</MenuItem>
@@ -511,7 +507,7 @@ const OnboardingApplication: React.FC = () => {
                         label="Upload OPT Receipt *"
                         onFileSelect={handleFileSelect(
                           "opt_receipt",
-                          "onboarding",
+                          "visa",
                         )}
                         helperText="Upload your OPT Receipt Notice (I-797C)"
                       />

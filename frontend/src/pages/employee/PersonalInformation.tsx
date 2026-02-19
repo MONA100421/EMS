@@ -57,6 +57,7 @@ const PersonalInformation: React.FC = () => {
 
   const [formData, setFormData] = useState<FormDataType>({
     name: { firstName: "", lastName: "", middleName: "", preferredName: "" },
+
     address: {
       street: "",
       apt: "",
@@ -65,7 +66,9 @@ const PersonalInformation: React.FC = () => {
       zipCode: "",
       country: "",
     },
+
     contact: { email: "", phone: "", workPhone: "" },
+
     employment: {
       employeeId: "",
       title: "",
@@ -77,8 +80,11 @@ const PersonalInformation: React.FC = () => {
       startDate: "",
       authType: "",
     },
+
     emergency: {
-      contactName: "",
+      firstName: "",
+      lastName: "",
+      middleName: "",
       relationship: "",
       phone: "",
       email: "",
@@ -126,7 +132,9 @@ const PersonalInformation: React.FC = () => {
             authType: workAuth.authType || "",
           },
           emergency: {
-            contactName: profile.emergency?.contactName || "",
+            firstName: profile.emergency?.firstName || "",
+            lastName: profile.emergency?.lastName || "",
+            middleName: profile.emergency?.middleName || "",
             relationship: profile.emergency?.relationship || "",
             phone: profile.emergency?.phone || "",
             email: profile.emergency?.email || "",
@@ -184,7 +192,14 @@ const PersonalInformation: React.FC = () => {
 
       if (sectionId === "emergency") {
         payload = {
-          emergency: tempData,
+          emergency: {
+            firstName: tempData.firstName,
+            lastName: tempData.lastName,
+            middleName: tempData.middleName,
+            phone: tempData.phone,
+            email: tempData.email,
+            relationship: tempData.relationship,
+          },
         };
       }
 
@@ -294,6 +309,312 @@ const PersonalInformation: React.FC = () => {
           ) : (
             <Typography>
               {formData.name.firstName} {formData.name.lastName}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Address */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="h6">Address</Typography>
+
+            {editingSection === "address" ? (
+              <>
+                <IconButton onClick={() => handleSave("address")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton onClick={() => handleEdit("address")}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          {editingSection === "address" ? (
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Street"
+                  value={tempData.street || ""}
+                  onChange={(e) => handleFieldChange("street", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="City"
+                  value={tempData.city || ""}
+                  onChange={(e) => handleFieldChange("city", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  fullWidth
+                  label="State"
+                  value={tempData.state || ""}
+                  onChange={(e) => handleFieldChange("state", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={3}>
+                <TextField
+                  fullWidth
+                  label="ZIP"
+                  value={tempData.zipCode || ""}
+                  onChange={(e) => handleFieldChange("zipCode", e.target.value)}
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography mt={1}>
+              {formData.address.street}, {formData.address.city},{" "}
+              {formData.address.state} {formData.address.zipCode}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Contact Info */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="h6">Contact Info</Typography>
+
+            {editingSection === "contact" ? (
+              <>
+                <IconButton onClick={() => handleSave("contact")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton onClick={() => handleEdit("contact")}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          {editingSection === "contact" ? (
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Cell Phone"
+                  value={tempData.phone || ""}
+                  onChange={(e) => handleFieldChange("phone", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Work Phone"
+                  value={tempData.workPhone || ""}
+                  onChange={(e) =>
+                    handleFieldChange("workPhone", e.target.value)
+                  }
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography mt={1}>
+              {formData.contact.phone} / {formData.contact.workPhone}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Employment */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="h6">Employment</Typography>
+
+            {editingSection === "employment" ? (
+              <>
+                <IconButton onClick={() => handleSave("employment")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton onClick={() => handleEdit("employment")}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          {editingSection === "employment" ? (
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Title"
+                  value={tempData.title || ""}
+                  onChange={(e) => handleFieldChange("title", e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Department"
+                  value={tempData.department || ""}
+                  onChange={(e) =>
+                    handleFieldChange("department", e.target.value)
+                  }
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography mt={1}>
+              {formData.employment.title} • {formData.employment.department}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Work Authorization */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="h6">Work Authorization</Typography>
+
+            {editingSection === "workAuthorization" ? (
+              <>
+                <IconButton onClick={() => handleSave("workAuthorization")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton onClick={() => handleEdit("workAuthorization")}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          {editingSection === "workAuthorization" ? (
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Authorization Type"
+                  value={tempData.authType || ""}
+                  onChange={(e) =>
+                    handleFieldChange("authType", e.target.value)
+                  }
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography mt={1}>
+              {formData.workAuthorization.authType}
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Emergency */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="h6">Emergency Contact</Typography>
+
+            {editingSection === "emergency" ? (
+              <>
+                <IconButton onClick={() => handleSave("emergency")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton onClick={() => handleEdit("emergency")}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          {editingSection === "emergency" ? (
+            <Grid container spacing={2} mt={1}>
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  value={tempData.firstName || ""}
+                  onChange={(e) =>
+                    handleFieldChange("firstName", e.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  value={tempData.lastName || ""}
+                  onChange={(e) =>
+                    handleFieldChange("lastName", e.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item xs={4}>
+                <TextField
+                  fullWidth
+                  label="Middle Name"
+                  value={tempData.middleName || ""}
+                  onChange={(e) =>
+                    handleFieldChange("middleName", e.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  value={tempData.phone || ""}
+                  onChange={(e) => handleFieldChange("phone", e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  value={tempData.email || ""}
+                  onChange={(e) => handleFieldChange("email", e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Relationship"
+                  value={tempData.relationship || ""}
+                  onChange={(e) =>
+                    handleFieldChange("relationship", e.target.value)
+                  }
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography mt={1}>
+              {formData.emergency.firstName} {formData.emergency.lastName} —{" "}
+              {formData.emergency.phone}
             </Typography>
           )}
         </CardContent>
