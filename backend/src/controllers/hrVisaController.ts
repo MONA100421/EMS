@@ -29,8 +29,9 @@ export const notifyVisaEmployee = async (req: Request, res: Response) => {
       i_20: "I-20",
     };
 
-    const readable =
-      stepLabels[document.type as keyof typeof stepLabels] || document.type;
+    const readable = stepLabels.hasOwnProperty(document.type)
+      ? stepLabels[document.type as keyof typeof stepLabels]
+      : document.type;
 
     await Notification.create({
       user: user._id,
@@ -67,6 +68,7 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
         if (!a.user) return null;
 
         const user = a.user;
+        if (!user.workAuthorization) return null;
 
         if (!["opt", "opt-stem"].includes(user.workAuthorization?.authType)) {
           return null;
@@ -107,7 +109,7 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
           if (!doc) {
             currentStep = `Waiting for ${stepLabels[step]}`;
             nextAction = "Employee Upload Required";
-            actionType = "notify";
+            actionType = "none";
             break;
           }
 
@@ -116,8 +118,10 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
             stepStatus = "rejected";
             nextAction = "Employee Re-upload Required";
             actionDocId = doc._id.toString();
+            actionType = "none";
             break;
           }
+
 
           if (doc.status === "pending") {
             currentStep = `${stepLabels[step]} Pending Approval`;
@@ -168,7 +172,11 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
           nextAction,
           actionType,
           approvedDocuments: docs
-            .filter((d) => d.status === "approved")
+            .filter(
+              (d) =>
+                orderedSteps.includes(d.type) &&
+                d.status === "approved"
+            )
             .map((d) => ({
               id: d._id,
               type: d.type,
@@ -181,7 +189,9 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
 
     const filtered = out.filter(Boolean);
 
-    const inProgress = filtered.filter((r: any) => r.stepStatus !== "approved");
+    const inProgress = filtered.filter(
+      (r: any) => r.stepStatus !== "All Documents Approved",
+    );
 
     return res.json({
       ok: true,

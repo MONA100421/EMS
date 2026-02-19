@@ -106,7 +106,6 @@ const VisaManagement: React.FC = () => {
   const handleFeedbackSubmit = async (feedback: string) => {
 
     if (!feedbackDialog.record?.id) return;
-    const id = feedbackDialog.record.id;
 
     try {
       if (feedbackDialog.type === "approve") {

@@ -17,7 +17,7 @@ export const enforceVisaOrder = async (
       });
     }
 
-    if (category !== "visa") {
+    if (!["opt_receipt", "opt_ead", "i_983", "i_20"].includes(type)) {
       return next();
     }
 
