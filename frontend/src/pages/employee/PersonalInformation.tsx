@@ -133,10 +133,10 @@ const PersonalInformation: React.FC = () => {
           },
 
           employment: {
-            employeeId: "",
-            title: "",
-            department: "",
-            manager: "",
+            employeeId: user.employeeId || "",
+            title: user.title || "",
+            department: user.department || "",
+            manager: user.manager || "",
           },
 
           workAuthorization: {
@@ -195,12 +195,10 @@ const PersonalInformation: React.FC = () => {
 
       if (sectionId === "employment") {
         payload = {
-          workAuthorization: {
-            title: tempData.title,
-            startDate: formData.workAuthorization.startDate,
-            endDate: formData.workAuthorization.endDate,
-            authType: formData.workAuthorization.authType,
-          },
+          title: tempData.title,
+          department: tempData.department,
+          manager: tempData.manager,
+          employeeId: tempData.employeeId,
         };
       }
 
@@ -609,36 +607,10 @@ const PersonalInformation: React.FC = () => {
                   }
                 />
               </Grid>
-
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="Start Date"
-                  InputLabelProps={{ shrink: true }}
-                  value={tempData.startDate || ""}
-                  onChange={(e) =>
-                    handleFieldChange("startDate", e.target.value)
-                  }
-                />
-              </Grid>
-
-              <Grid item xs={6}>
-                <TextField
-                  fullWidth
-                  type="date"
-                  label="End Date"
-                  InputLabelProps={{ shrink: true }}
-                  value={tempData.endDate || ""}
-                  onChange={(e) => handleFieldChange("endDate", e.target.value)}
-                />
-              </Grid>
             </Grid>
           ) : (
             <Typography mt={1}>
               {formData.employment.title} • {formData.employment.department}
-              <br />
-              {formData.employment.startDate} – {formData.employment.endDate}
             </Typography>
           )}
         </CardContent>
