@@ -10,6 +10,7 @@ import {
   Avatar,
   IconButton,
   useTheme,
+  LinearProgress,
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -368,9 +369,11 @@ const PersonalInformation: React.FC = () => {
 
               {uploadingPhoto && (
                 <Box sx={{ width: 100, mt: 1 }}>
-                  <Typography variant="caption">
-                    Uploading {uploadProgress}%
-                  </Typography>
+                  <LinearProgress
+                    variant="determinate"
+                    value={uploadProgress}
+                  />
+                  <Typography variant="caption">{uploadProgress}%</Typography>
                 </Box>
               )}
 
