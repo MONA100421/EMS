@@ -38,6 +38,15 @@ interface DocumentItem {
   fileUrl?: string;
 }
 
+interface FormDataType {
+  name: SectionData;
+  address: SectionData;
+  contact: SectionData;
+  employment: SectionData;
+  workAuthorization: SectionData;
+  emergency: SectionData;
+}
+
 const PersonalInformation: React.FC = () => {
   const theme = useTheme();
 
@@ -46,7 +55,7 @@ const PersonalInformation: React.FC = () => {
   const [tempData, setTempData] = useState<SectionData>({});
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
 
-  const [formData, setFormData] = useState<Record<string, SectionData>>({
+  const [formData, setFormData] = useState<FormDataType>({
     name: { firstName: "", lastName: "", middleName: "", preferredName: "" },
     address: {
       street: "",
@@ -62,51 +71,65 @@ const PersonalInformation: React.FC = () => {
       title: "",
       department: "",
       manager: "",
-      startDate: "",
-      workAuthorization: "",
     },
-    emergency: { contactName: "", relationship: "", phone: "", email: "" },
+
+    workAuthorization: {
+      startDate: "",
+      authType: "",
+    },
+    emergency: {
+      contactName: "",
+      relationship: "",
+      phone: "",
+      email: "",
+    },
   });
+
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const res = await api.get("/employee/me");
-        const emp = res.data.employee || {};
+        const user = res.data.user || {};
+        const profile = user.profile || {};
+        const workAuth = user.workAuthorization || {};
 
         setFormData({
           name: {
-            firstName: emp.firstName || "",
-            lastName: emp.lastName || "",
-            middleName: emp.middleName || "",
-            preferredName: emp.preferredName || "",
+            firstName: profile.firstName || "",
+            lastName: profile.lastName || "",
+            middleName: profile.middleName || "",
+            preferredName: profile.preferredName || "",
           },
           address: {
-            street: emp.address?.street || "",
-            apt: emp.address?.apt || "",
-            city: emp.address?.city || "",
-            state: emp.address?.state || "",
-            zipCode: emp.address?.zipCode || "",
-            country: emp.address?.country || "",
+            street: profile.address?.street || "",
+            apt: profile.address?.apt || "",
+            city: profile.address?.city || "",
+            state: profile.address?.state || "",
+            zipCode: profile.address?.zip || "",
+            country: profile.address?.country || "",
           },
           contact: {
-            email: emp.email || "",
-            phone: emp.phone || "",
-            workPhone: emp.workPhone || "",
+            email: user.email || "",
+            phone: profile.contact?.phone || "",
+            workPhone: profile.contact?.workPhone || "",
           },
           employment: {
-            employeeId: emp.employeeId || "",
-            title: emp.title || "",
-            department: emp.department || "",
-            manager: emp.manager || "",
-            startDate: emp.startDate || "",
-            workAuthorization: emp.workAuthorization || "",
+            employeeId: "",
+            title: "",
+            department: "",
+            manager: "",
+          },
+
+          workAuthorization: {
+            startDate: workAuth.startDate || "",
+            authType: workAuth.authType || "",
           },
           emergency: {
-            contactName: emp.emergency?.contactName || "",
-            relationship: emp.emergency?.relationship || "",
-            phone: emp.emergency?.phone || "",
-            email: emp.emergency?.email || "",
+            contactName: profile.emergency?.contactName || "",
+            relationship: profile.emergency?.relationship || "",
+            phone: profile.emergency?.phone || "",
+            email: profile.emergency?.email || "",
           },
         });
 
@@ -129,21 +152,59 @@ const PersonalInformation: React.FC = () => {
     try {
       let payload: Record<string, unknown> = {};
 
-      if (sectionId === "name") payload = tempData;
-      if (sectionId === "address") payload = { address: tempData };
-      if (sectionId === "contact")
+      if (sectionId === "name") {
+        payload = {
+          firstName: tempData.firstName,
+          lastName: tempData.lastName,
+          middleName: tempData.middleName,
+          preferredName: tempData.preferredName,
+        };
+      }
+
+      if (sectionId === "address") {
+        payload = {
+          address: {
+            street: tempData.street,
+            apt: tempData.apt,
+            city: tempData.city,
+            state: tempData.state,
+            zip: tempData.zipCode,
+            country: tempData.country,
+          },
+        };
+      }
+
+      if (sectionId === "contact") {
         payload = {
           phone: tempData.phone,
           workPhone: tempData.workPhone,
           email: tempData.email,
         };
-      if (sectionId === "emergency") payload = { emergency: tempData };
+      }
+
+      if (sectionId === "emergency") {
+        payload = {
+          emergency: tempData,
+        };
+      }
+
+      if (sectionId === "workAuthorization") {
+        payload = {
+          workAuthorization: {
+            startDate: tempData.startDate,
+            authType: tempData.authType,
+          },
+        };
+      }
 
       await api.patch("/employee/me", payload);
 
       setFormData((prev) => ({
         ...prev,
-        [sectionId]: { ...tempData },
+        [sectionId]: {
+          ...prev[sectionId],
+          ...tempData,
+        },
       }));
 
       setEditingSection(null);
@@ -194,6 +255,47 @@ const PersonalInformation: React.FC = () => {
               <Typography variant="body2">{formData.contact.email}</Typography>
             </Box>
           </Box>
+        </CardContent>
+      </Card>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography variant="h6">Name</Typography>
+
+            {editingSection === "name" ? (
+              <>
+                <IconButton onClick={() => handleSave("name")}>
+                  <SaveIcon />
+                </IconButton>
+                <IconButton onClick={handleCancel}>
+                  <CancelIcon />
+                </IconButton>
+              </>
+            ) : (
+              <IconButton onClick={() => handleEdit("name")}>
+                <EditIcon />
+              </IconButton>
+            )}
+          </Box>
+
+          {editingSection === "name" ? (
+            <Grid container spacing={2}>
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  value={tempData.firstName || ""}
+                  onChange={(e) =>
+                    handleFieldChange("firstName", e.target.value)
+                  }
+                />
+              </Grid>
+            </Grid>
+          ) : (
+            <Typography>
+              {formData.name.firstName} {formData.name.lastName}
+            </Typography>
+          )}
         </CardContent>
       </Card>
 

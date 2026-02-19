@@ -17,17 +17,32 @@ const UserSchema = new Schema(
       preferredName: String,
       dob: Date,
       ssn: String,
+      gender: String,
+
       address: {
         street: String,
+        apt: String,
         city: String,
         state: String,
         zip: String,
+        country: String,
       },
-      contacts: {
+
+      contact: {
         phone: String,
-        cell: String,
+        workPhone: String,
+      },
+
+      emergency: {
+        firstName: String,
+        lastName: String,
+        middleName: String,
+        phone: String,
+        email: String,
+        relationship: String,
       },
     },
+
     workAuthorization: {
       isCitizen: Boolean,
       authType: {
@@ -35,6 +50,7 @@ const UserSchema = new Schema(
       },
       startDate: Date,
       endDate: Date,
+      title: String,
     },
   },
   { timestamps: true },

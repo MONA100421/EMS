@@ -5,7 +5,6 @@ import RegistrationToken from "../models/RegistrationToken";
 import { sendInviteEmail } from "../utils/email";
 import crypto from "crypto";
 import mongoose from "mongoose";
-import EmployeeProfile from "../models/EmployeeProfile";
 import NotificationModel from "../models/Notification";
 import { NotificationTypes } from "../utils/notificationTypes";
 import Document from "../models/Document";
@@ -387,14 +386,32 @@ export const reviewOnboarding = async (req: Request, res: Response) => {
           $set: {
             "profile.firstName": formData.firstName,
             "profile.lastName": formData.lastName,
+            "profile.middleName": formData.middleName,
+            "profile.preferredName": formData.preferredName,
+            "profile.dob": formData.dateOfBirth,
+            "profile.ssn": formData.ssn,
+            "profile.gender": formData.gender,
+
+            "profile.address.street": formData.address,
+            "profile.address.city": formData.city,
+            "profile.address.state": formData.state,
+            "profile.address.zip": formData.zipCode,
+
+            "profile.contact.phone": formData.phone,
+            "profile.contact.workPhone": formData.workPhone,
+
+            "profile.emergency.firstName": formData.emergencyContact,
+            "profile.emergency.phone": formData.emergencyPhone,
+            "profile.emergency.relationship": formData.emergencyRelationship,
 
             "workAuthorization.authType": formData.workAuthType,
-            "workAuthorization.startDate": formData.visaStart,
-            "workAuthorization.endDate": formData.visaEnd,
+            "workAuthorization.startDate": formData.startDate,
+            "workAuthorization.endDate": formData.endDate,
           },
         },
         { session },
       );
+
     }
 
 

@@ -102,8 +102,8 @@ const OnboardingApplication: React.FC = () => {
     isPermanentResident: "",
     visaType: "",
     visaOther: "",
-    visaStartDate: "",
-    visaEndDate: "",
+    startDate: "",
+    endDate: "",
   });
 
 
@@ -523,8 +523,8 @@ const OnboardingApplication: React.FC = () => {
                         type="date"
                         label="Start Date"
                         InputLabelProps={{ shrink: true }}
-                        value={formData.visaStartDate}
-                        onChange={handleChange("visaStartDate")}
+                        value={formData.startDate}
+                        onChange={handleChange("startDate")}
                       />
                     </Grid>
 
@@ -534,8 +534,8 @@ const OnboardingApplication: React.FC = () => {
                         type="date"
                         label="End Date"
                         InputLabelProps={{ shrink: true }}
-                        value={formData.visaEndDate}
-                        onChange={handleChange("visaEndDate")}
+                        value={formData.endDate}
+                        onChange={handleChange("endDate")}
                       />
                     </Grid>
                   </>

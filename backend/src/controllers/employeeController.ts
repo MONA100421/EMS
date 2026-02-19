@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import EmployeeProfile from "../models/EmployeeProfile";
 import User from "../models/User";
 import OnboardingApplication from "../models/OnboardingApplication";
 import mongoose from "mongoose";
@@ -15,30 +14,23 @@ export const getMyProfile = async (req: Request, res: Response) => {
     if (!user)
       return res.status(404).json({ ok: false, message: "User not found" });
 
-    let profile = await EmployeeProfile.findOne({ user: userId }).lean();
-    if (!profile) {
-      // create a blank profile
-      profile = await EmployeeProfile.create({
-        user: new mongoose.Types.ObjectId(userId),
-      });
-    }
-
-    // return both user basic info and profile
     return res.json({
       ok: true,
       user: {
         id: user._id,
         email: user.email,
         role: user.role,
-        username: (user as any).username ?? null,
+        username: user.username ?? null,
+        profile: user.profile ?? {},
+        workAuthorization: user.workAuthorization ?? {},
       },
-      employee: profile,
     });
   } catch (err) {
     console.error("getMyProfile error:", err);
-    return res.status(500).json({ ok: false, message: "Server error" });
+    return res.status(500).json({ ok: false });
   }
 };
+
 
 /* PATCH /api/employee/me
    Body: free-form partial of allowed fields; we selectively map fields.
@@ -50,53 +42,98 @@ export const updateMyProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ ok: false });
     }
 
-    const payload = req.body;
-
-    const profile = await EmployeeProfile.findOne({ user: userId });
     const user = await User.findById(userId);
-
-    if (!profile || !user) {
+    if (!user) {
       return res.status(404).json({ ok: false });
     }
 
-    /* ---------- User fields ---------- */
-    if (!user.profile) {
-      user.profile = {};
+    const u = user as any;
+    const payload = req.body;
+
+    //  nested object
+    if (!u.profile) u.profile = {};
+    if (!u.profile.address) u.profile.address = {};
+    if (!u.profile.contact) u.profile.contact = {};
+    if (!u.profile.emergency) u.profile.emergency = {};
+    if (!u.workAuthorization) u.workAuthorization = {};
+
+    // Profile
+    if (payload.firstName !== undefined)
+      u.profile.firstName = payload.firstName;
+
+    if (payload.lastName !== undefined) u.profile.lastName = payload.lastName;
+
+    if (payload.middleName !== undefined)
+      u.profile.middleName = payload.middleName;
+
+    if (payload.preferredName !== undefined)
+      u.profile.preferredName = payload.preferredName;
+
+    // Address
+    if (payload.address) {
+      if (payload.address.street !== undefined)
+        u.profile.address.street = payload.address.street;
+
+      if (payload.address.apt !== undefined)
+        u.profile.address.apt = payload.address.apt;
+
+      if (payload.address.city !== undefined)
+        u.profile.address.city = payload.address.city;
+
+      if (payload.address.state !== undefined)
+        u.profile.address.state = payload.address.state;
+
+      if (payload.address.zip !== undefined)
+        u.profile.address.zip = payload.address.zip;
+
+      if (payload.address.country !== undefined)
+        u.profile.address.country = payload.address.country;
     }
 
-    if (payload.firstName !== undefined) {
-      user.profile.firstName = payload.firstName;
-    }
-    if (payload.lastName !== undefined) {
-      user.profile.lastName = payload.lastName;
-    }
-    if (payload.preferredName !== undefined) {
-      user.profile.preferredName = payload.preferredName;
-    }
+    // Contact
+    if (payload.phone !== undefined) u.profile.contact.phone = payload.phone;
 
-    if (payload.email) {
-      user.email = payload.email;
-      await user.save();
-    }
+    if (payload.workPhone !== undefined)
+      u.profile.contact.workPhone = payload.workPhone;
 
-    /* ---------- Profile fields ---------- */
-    if (payload.middleName) profile.middleName = payload.middleName;
-    if (payload.address) profile.address = payload.address;
-    if (payload.phone) profile.phone = payload.phone;
-    if (payload.workPhone) profile.workPhone = payload.workPhone;
-    if (payload.emergency) profile.emergency = payload.emergency;
-    if (payload.employment) profile.employment = payload.employment;
-
-    if (payload.documents && Array.isArray(payload.documents)) {
-      profile.documents = payload.documents;
+    // Emergency
+    if (payload.emergency) {
+      u.profile.emergency.firstName = payload.emergency.firstName;
+      u.profile.emergency.lastName = payload.emergency.lastName;
+      u.profile.emergency.middleName = payload.emergency.middleName;
+      u.profile.emergency.phone = payload.emergency.phone;
+      u.profile.emergency.email = payload.emergency.email;
+      u.profile.emergency.relationship = payload.emergency.relationship;
     }
 
-    await profile.save();
+    // Email
+    if (payload.email !== undefined) u.email = payload.email;
 
-    return res.json({ ok: true, employee: profile });
+    // Work Authorization
+    if (payload.workAuthorization) {
+      if (payload.workAuthorization.startDate !== undefined)
+        u.workAuthorization.startDate = payload.workAuthorization.startDate;
+
+      if (payload.workAuthorization.authType !== undefined)
+        u.workAuthorization.authType = payload.workAuthorization.authType;
+
+      if (payload.workAuthorization.endDate !== undefined)
+        u.workAuthorization.endDate = payload.workAuthorization.endDate;
+
+      if (payload.workAuthorization.title !== undefined)
+        u.workAuthorization.title = payload.workAuthorization.title;
+    }
+
+    await user.save();
+
+    return res.json({
+      ok: true,
+      user,
+    });
   } catch (err) {
     console.error("updateMyProfile error:", err);
     return res.status(500).json({ ok: false });
   }
 };
+
 
