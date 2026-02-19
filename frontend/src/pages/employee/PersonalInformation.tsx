@@ -74,11 +74,15 @@ const PersonalInformation: React.FC = () => {
       title: "",
       department: "",
       manager: "",
+      startDate: "",
+      endDate: "",
     },
 
     workAuthorization: {
       startDate: "",
+      endDate: "",
       authType: "",
+      title: "",
     },
 
     emergency: {
@@ -120,17 +124,23 @@ const PersonalInformation: React.FC = () => {
             phone: profile.contact?.phone || "",
             workPhone: profile.contact?.workPhone || "",
           },
+
           employment: {
             employeeId: "",
             title: "",
             department: "",
             manager: "",
+            startDate: workAuth.startDate || "",
+            endDate: workAuth.endDate || "",
           },
 
           workAuthorization: {
             startDate: workAuth.startDate || "",
+            endDate: workAuth.endDate || "",
             authType: workAuth.authType || "",
+            title: workAuth.title || "",
           },
+
           emergency: {
             firstName: profile.emergency?.firstName || "",
             lastName: profile.emergency?.lastName || "",
@@ -166,6 +176,16 @@ const PersonalInformation: React.FC = () => {
           lastName: tempData.lastName,
           middleName: tempData.middleName,
           preferredName: tempData.preferredName,
+        };
+      }
+
+      if (sectionId === "employment") {
+        payload = {
+          workAuthorization: {
+            title: tempData.title,
+            startDate: tempData.startDate,
+            endDate: tempData.endDate,
+          },
         };
       }
 
@@ -207,7 +227,9 @@ const PersonalInformation: React.FC = () => {
         payload = {
           workAuthorization: {
             startDate: tempData.startDate,
+            endDate: tempData.endDate,
             authType: tempData.authType,
+            title: tempData.title,
           },
         };
       }
@@ -463,6 +485,7 @@ const PersonalInformation: React.FC = () => {
                   onChange={(e) => handleFieldChange("title", e.target.value)}
                 />
               </Grid>
+
               <Grid item xs={6}>
                 <TextField
                   fullWidth
@@ -473,10 +496,36 @@ const PersonalInformation: React.FC = () => {
                   }
                 />
               </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Start Date"
+                  InputLabelProps={{ shrink: true }}
+                  value={tempData.startDate || ""}
+                  onChange={(e) =>
+                    handleFieldChange("startDate", e.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="End Date"
+                  InputLabelProps={{ shrink: true }}
+                  value={tempData.endDate || ""}
+                  onChange={(e) => handleFieldChange("endDate", e.target.value)}
+                />
+              </Grid>
             </Grid>
           ) : (
             <Typography mt={1}>
               {formData.employment.title} • {formData.employment.department}
+              <br />
+              {formData.employment.startDate} – {formData.employment.endDate}
             </Typography>
           )}
         </CardContent>
@@ -516,10 +565,47 @@ const PersonalInformation: React.FC = () => {
                   }
                 />
               </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  label="Visa Title"
+                  value={tempData.title || ""}
+                  onChange={(e) => handleFieldChange("title", e.target.value)}
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Start Date"
+                  InputLabelProps={{ shrink: true }}
+                  value={tempData.startDate || ""}
+                  onChange={(e) =>
+                    handleFieldChange("startDate", e.target.value)
+                  }
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="End Date"
+                  InputLabelProps={{ shrink: true }}
+                  value={tempData.endDate || ""}
+                  onChange={(e) => handleFieldChange("endDate", e.target.value)}
+                />
+              </Grid>
             </Grid>
           ) : (
             <Typography mt={1}>
-              {formData.workAuthorization.authType}
+              {formData.workAuthorization.authType} –{" "}
+              {formData.workAuthorization.title}
+              <br />
+              {formData.workAuthorization.startDate} –{" "}
+              {formData.workAuthorization.endDate}
             </Typography>
           )}
         </CardContent>
