@@ -294,9 +294,7 @@ const PersonalInformation: React.FC = () => {
     try {
       setUploadingPhoto(true);
 
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
 
       const preview = URL.createObjectURL(file);
       setPreviewUrl(preview);
@@ -314,16 +312,12 @@ const PersonalInformation: React.FC = () => {
         category: "onboarding",
       });
 
-      await api.put(presign.data.uploadUrl, compressedFile, {
+      await fetch(presign.data.uploadUrl, {
+        method: "PUT",
         headers: {
           "Content-Type": compressedFile.type,
         },
-        onUploadProgress: (progressEvent) => {
-          const percent = Math.round(
-            (progressEvent.loaded * 100) / (progressEvent.total || 1),
-          );
-          setUploadProgress(percent);
-        },
+        body: compressedFile,
       });
 
       await api.post("/uploads/complete", {
