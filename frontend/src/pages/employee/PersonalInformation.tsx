@@ -195,10 +195,14 @@ const PersonalInformation: React.FC = () => {
 
       if (sectionId === "employment") {
         payload = {
-          title: tempData.title,
-          department: tempData.department,
-          manager: tempData.manager,
-          employeeId: tempData.employeeId,
+          ...(tempData.title !== undefined && { title: tempData.title }),
+          ...(tempData.department !== undefined && {
+            department: tempData.department,
+          }),
+          ...(tempData.manager !== undefined && { manager: tempData.manager }),
+          ...(tempData.employeeId !== undefined && {
+            employeeId: tempData.employeeId,
+          }),
         };
       }
 

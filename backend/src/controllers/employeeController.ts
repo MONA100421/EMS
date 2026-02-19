@@ -71,7 +71,6 @@ export const updateMyProfile = async (req: Request, res: Response) => {
 
     if (payload.photoUrl !== undefined) u.profile.photoUrl = payload.photoUrl;
 
-
     // Address
     if (payload.address) {
       if (payload.address.street !== undefined)
@@ -111,6 +110,23 @@ export const updateMyProfile = async (req: Request, res: Response) => {
 
     // Email
     if (payload.email !== undefined) u.email = payload.email;
+
+    // Employment
+    if (payload.title !== undefined) {
+      u.title = payload.title;
+    }
+
+    if (payload.department !== undefined) {
+      u.department = payload.department;
+    }
+
+    if (payload.manager !== undefined) {
+      u.manager = payload.manager;
+    }
+
+    if (payload.employeeId !== undefined) {
+      u.employeeId = payload.employeeId;
+    }
 
     // Work Authorization
     if (payload.workAuthorization) {
