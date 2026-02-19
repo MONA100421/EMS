@@ -28,6 +28,7 @@ import {
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 import api from "../../lib/api";
 import imageCompression from "browser-image-compression";
+import axios from "axios";
 
 interface SectionData {
   [key: string]: string;
@@ -80,8 +81,6 @@ const PersonalInformation: React.FC = () => {
       title: "",
       department: "",
       manager: "",
-      startDate: "",
-      endDate: "",
     },
 
     workAuthorization: {
@@ -138,8 +137,6 @@ const PersonalInformation: React.FC = () => {
             title: "",
             department: "",
             manager: "",
-            startDate: workAuth.startDate || "",
-            endDate: workAuth.endDate || "",
           },
 
           workAuthorization: {
@@ -200,8 +197,9 @@ const PersonalInformation: React.FC = () => {
         payload = {
           workAuthorization: {
             title: tempData.title,
-            startDate: tempData.startDate,
-            endDate: tempData.endDate,
+            startDate: formData.workAuthorization.startDate,
+            endDate: formData.workAuthorization.endDate,
+            authType: formData.workAuthorization.authType,
           },
         };
       }
@@ -312,12 +310,16 @@ const PersonalInformation: React.FC = () => {
         category: "onboarding",
       });
 
-      await fetch(presign.data.uploadUrl, {
-        method: "PUT",
+      await axios.put(presign.data.uploadUrl, compressedFile, {
         headers: {
           "Content-Type": compressedFile.type,
         },
-        body: compressedFile,
+        onUploadProgress: (progressEvent) => {
+          const percent = Math.round(
+            (progressEvent.loaded * 100) / (progressEvent.total || 1),
+          );
+          setUploadProgress(percent);
+        },
       });
 
       await api.post("/uploads/complete", {
