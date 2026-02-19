@@ -73,7 +73,6 @@ interface DocumentItem {
   fileName: string;
   type: string;
   uploadedAt: string;
-  fileUrl: string;
 }
 
 const EmployeeProfileDetail: React.FC = () => {
@@ -103,16 +102,35 @@ const EmployeeProfileDetail: React.FC = () => {
     if (id) fetchEmployee();
   }, [id]);
 
-  const handlePreviewOrDownload = async (fileUrl: string) => {
+  const handlePreview = async (docId: string) => {
     try {
-      const res = await api.post("/uploads/presign-get", {
-        fileUrl,
+      const res = await api.get(`/documents/${docId}/download`, {
+        responseType: "blob",
       });
-      window.open(res.data.downloadUrl, "_blank");
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      window.open(url, "_blank");
     } catch (err) {
-      console.error("Failed to open document:", err);
+      console.error("Preview failed", err);
     }
   };
+
+  const handleDownload = async (doc: DocumentItem) => {
+    try {
+      const res = await api.get(`/documents/${doc._id}/download`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.fileName;
+      a.click();
+    } catch (err) {
+      console.error("Download failed", err);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -251,14 +269,14 @@ const EmployeeProfileDetail: React.FC = () => {
 
                       <IconButton
                         size="small"
-                        onClick={() => handlePreviewOrDownload(doc.fileUrl)}
+                        onClick={() => handlePreview(doc._id)}
                       >
                         <ViewIcon fontSize="small" />
                       </IconButton>
 
                       <IconButton
                         size="small"
-                        onClick={() => handlePreviewOrDownload(doc.fileUrl)}
+                        onClick={() => handleDownload(doc)}
                       >
                         <DownloadIcon fontSize="small" />
                       </IconButton>

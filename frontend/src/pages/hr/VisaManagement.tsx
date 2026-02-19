@@ -28,7 +28,6 @@ import {
 import StatusChip from "../../components/common/StatusChip";
 import FeedbackDialog from "../../components/common/FeedbackDialog";
 import api from "../../lib/api";
-
 interface VisaRecord {
   id: string | null;
   employeeName: string;
@@ -36,11 +35,12 @@ interface VisaRecord {
   visaType: string;
   startDate: string;
   endDate: string;
-  daysRemaining: number;
+  daysRemaining: number | null;
   currentStep: string;
   stepStatus: "pending" | "approved" | "rejected";
   nextAction: string;
-  documentKey?: string; // presign 用
+  documentKey?: string;
+  actionType: "review" | "notify" | "none";
 }
 
 const VisaManagement: React.FC = () => {
@@ -60,6 +60,15 @@ const VisaManagement: React.FC = () => {
     type: "approve",
     record: null,
   });
+
+  const handleSendNotification = async (record: VisaRecord) => {
+    try {
+      await api.post(`/hr/visa-notify/${record.id}`);
+      alert("Notification sent!");
+    } catch (err) {
+      console.error("Notification failed", err);
+    }
+  };
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -89,7 +98,9 @@ const VisaManagement: React.FC = () => {
   };
 
   const handleFeedbackSubmit = async (feedback: string) => {
-    if (!feedbackDialog.record) return;
+
+    if (!feedbackDialog.record?.id) return;
+    const id = feedbackDialog.record.id;
 
     try {
       if (feedbackDialog.type === "approve") {
@@ -112,7 +123,7 @@ const VisaManagement: React.FC = () => {
     if (!record.id) return;
 
     try {
-      const res = await api.get(`/uploads/documents/${record.id}/download`);
+      const res = await api.get(`/documents/${record.id}/download`);
       if (res.data.ok) {
         window.open(res.data.downloadUrl, "_blank");
       }
@@ -121,7 +132,8 @@ const VisaManagement: React.FC = () => {
     }
   };
 
-  const getDaysRemainingColor = (days: number) => {
+  const getDaysRemainingColor = (days: number | null) => {
+    if (days === null) return theme.palette.text.secondary;
     if (days <= 30) return theme.palette.error.main;
     if (days <= 90) return theme.palette.warning.main;
     return theme.palette.success.main;
@@ -179,7 +191,7 @@ const VisaManagement: React.FC = () => {
 
               {!loading &&
                 records.map((record) => (
-                  <TableRow key={record.id} hover>
+                  <TableRow key={record.id ?? record.employeeName} hover>
                     <TableCell>
                       <Box sx={{ display: "flex", gap: 2 }}>
                         <Avatar>
@@ -207,12 +219,16 @@ const VisaManagement: React.FC = () => {
                     <TableCell>{record.endDate}</TableCell>
 
                     <TableCell>
-                      <Typography
-                        fontWeight={600}
-                        color={getDaysRemainingColor(record.daysRemaining)}
-                      >
-                        {record.daysRemaining} days
-                      </Typography>
+                      {record.daysRemaining !== null ? (
+                        <Typography
+                          fontWeight={600}
+                          color={getDaysRemainingColor(record.daysRemaining)}
+                        >
+                          {record.daysRemaining} days
+                        </Typography>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
 
                     <TableCell>
@@ -225,55 +241,52 @@ const VisaManagement: React.FC = () => {
                     <TableCell>{record.nextAction}</TableCell>
 
                     <TableCell align="right">
-                      {record.stepStatus === "pending" && record.id && (
-                        <Box sx={{ display: "flex", gap: 1 }}>
-                          <Tooltip title="View">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleViewOrDownload(record)}
-                            >
-                              <ViewIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          <Tooltip title="Download">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleViewOrDownload(record)}
-                            >
-                              <DownloadIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          <Tooltip title="Approve">
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => handleApprove(record)}
-                            >
-                              <ApproveIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          <Tooltip title="Reject">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleReject(record)}
-                            >
-                              <RejectIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-
-                          {record.currentStep === "I-983" && (
-                            <Tooltip title="Send Notification">
-                              <IconButton size="small" color="primary">
-                                <SendIcon fontSize="small" />
+                      <Box sx={{ display: "flex", gap: 1 }}>
+                        {record.actionType === "review" && (
+                          <>
+                            <Tooltip title="View">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleViewOrDownload(record)}
+                              >
+                                <ViewIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                          )}
-                        </Box>
-                      )}
+
+                            <Tooltip title="Approve">
+                              <IconButton
+                                size="small"
+                                color="success"
+                                onClick={() => handleApprove(record)}
+                              >
+                                <ApproveIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Reject">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleReject(record)}
+                              >
+                                <RejectIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+
+                        {record.actionType === "notify" && (
+                          <Tooltip title="Send Notification">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => handleSendNotification(record)}
+                            >
+                              <SendIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}

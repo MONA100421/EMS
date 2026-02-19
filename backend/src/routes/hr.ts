@@ -56,6 +56,13 @@ router.get(
   hrVisaController.getVisaOverview,
 );
 
+router.post(
+  "/visa-notify/:id",
+  authMiddleware,
+  requireRole("hr"),
+  hrVisaController.notifyVisaEmployee
+);
+
 //documents
 router.post(
   "/documents/:id/approve",

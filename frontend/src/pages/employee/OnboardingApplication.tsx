@@ -13,6 +13,10 @@ import {
   StepLabel,
   Divider,
   useTheme,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   CheckCircle as CheckIcon,
@@ -95,6 +99,11 @@ const OnboardingApplication: React.FC = () => {
     emergencyRelationship: "",
     workAuthType: "",
     workAuthOther: "",
+    isPermanentResident: "",
+    visaType: "",
+    visaOther: "",
+    visaStartDate: "",
+    visaEndDate: "",
   });
 
 
@@ -309,20 +318,32 @@ const OnboardingApplication: React.FC = () => {
               />
             </Grid>
             <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Gender"
-                select
-                SelectProps={{ native: true }}
-                value={formData.gender}
-                onChange={handleChange("gender")}
-              >
-                <option value="">Select...</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer-not">Prefer not to say</option>
-              </TextField>
+              <FormControl fullWidth>
+                <InputLabel id="gender-label">Gender</InputLabel>
+                <Select
+                  labelId="gender-label"
+                  value={formData.gender}
+                  label="Gender"
+                  displayEmpty
+                  renderValue={(selected) => {
+                    if (!selected) {
+                      return <em>Select...</em>;
+                    }
+                    return selected;
+                  }}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      gender: e.target.value,
+                    }))
+                  }
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                  <MenuItem value="prefer-not">Prefer not to say</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
         );
@@ -408,38 +429,134 @@ const OnboardingApplication: React.FC = () => {
       case 2:
         return (
           <Grid container spacing={3}>
+            {/* Permanent Resident Question */}
             <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Work Authorization Type"
-                select
-                SelectProps={{ native: true }}
-                value={formData.workAuthType}
-                onChange={handleChange("workAuthType")}
-              >
-                <option value="">Select...</option>
-                <option value="citizen">U.S. Citizen</option>
-                <option value="green-card">Green Card</option>
-                <option value="opt">OPT</option>
-                <option value="opt-stem">OPT STEM Extension</option>
-                <option value="h1b">H1-B</option>
-                <option value="l2">L2</option>
-                <option value="h4">H4</option>
-                <option value="other">Other</option>
-              </TextField>
+              <FormControl fullWidth>
+                <InputLabel id="resident-label">
+                  Permanent Resident or U.S. Citizen?
+                </InputLabel>
+                <Select
+                  labelId="resident-label"
+                  value={formData.isPermanentResident}
+                  label="Permanent Resident or U.S. Citizen?"
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      isPermanentResident: e.target.value,
+                      visaType: "",
+                    }))
+                  }
+                >
+                  <MenuItem value="yes">Yes</MenuItem>
+                  <MenuItem value="no">No</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
-            {formData.workAuthType === "other" && (
+
+            {/* If YES */}
+            {formData.isPermanentResident === "yes" && (
               <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Please Specify"
-                  value={formData.workAuthOther}
-                  onChange={handleChange("workAuthOther")}
-                />
+                <FormControl fullWidth>
+                  <InputLabel id="resident-type-label">Type</InputLabel>
+                  <Select
+                    labelId="resident-type-label"
+                    value={formData.visaType}
+                    label="Type"
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        visaType: e.target.value,
+                      }))
+                    }
+                  >
+                    <MenuItem value="green-card">Green Card</MenuItem>
+                    <MenuItem value="citizen">Citizen</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
+            )}
+
+            {/* If NO */}
+            {formData.isPermanentResident === "no" && (
+              <>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel id="visa-type-label">Visa Type</InputLabel>
+                    <Select
+                      labelId="visa-type-label"
+                      value={formData.visaType}
+                      label="Visa Type"
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          visaType: e.target.value,
+                        }))
+                      }
+                    >
+                      <MenuItem value="h1b">H1-B</MenuItem>
+                      <MenuItem value="l2">L2</MenuItem>
+                      <MenuItem value="f1-opt">F1 - OPT</MenuItem>
+                      <MenuItem value="f1-cpt">F1 - CPT</MenuItem>
+                      <MenuItem value="h4">H4</MenuItem>
+                      <MenuItem value="other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* If F1 - OPT */}
+                {formData.visaType === "f1-opt" && (
+                  <>
+                    <Grid item xs={12}>
+                      <FileUpload
+                        label="Upload OPT Receipt *"
+                        onFileSelect={handleFileSelect(
+                          "opt_receipt",
+                          "onboarding",
+                        )}
+                        helperText="Upload your OPT Receipt Notice (I-797C)"
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        type="date"
+                        label="Start Date"
+                        InputLabelProps={{ shrink: true }}
+                        value={formData.visaStartDate}
+                        onChange={handleChange("visaStartDate")}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        type="date"
+                        label="End Date"
+                        InputLabelProps={{ shrink: true }}
+                        value={formData.visaEndDate}
+                        onChange={handleChange("visaEndDate")}
+                      />
+                    </Grid>
+                  </>
+                )}
+
+                {/* If Other */}
+                {formData.visaType === "other" && (
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Specify Visa Type"
+                      value={formData.visaOther}
+                      onChange={handleChange("visaOther")}
+                    />
+                  </Grid>
+                )}
+              </>
             )}
           </Grid>
         );
+
       case 3:
         return (
           <Grid container spacing={3}>

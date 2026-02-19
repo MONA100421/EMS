@@ -23,6 +23,7 @@ import {
   Cancel as RejectedIcon,
   Description as DocIcon,
   Info as InfoIcon,
+  Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import type { StatusType } from "../../components/common/StatusChip";
 import FileUpload from "../../components/common/FileUpload";
@@ -40,6 +41,7 @@ interface VisaStep {
   document?: string;
   feedback?: string;
   uploadedAt?: string;
+  fileUrl?: string;
 }
 
 type RawDoc = {
@@ -48,6 +50,7 @@ type RawDoc = {
   status?: "not-started" | "pending" | "approved" | "rejected";
   feedback?: string;
   uploadedAt?: string;
+  fileUrl?: string;
 };
 
 const transformDocs = (docs: RawDoc[]): VisaStep[] => {
@@ -87,28 +90,44 @@ const transformDocs = (docs: RawDoc[]): VisaStep[] => {
       document: found?.fileName,
       feedback: found?.feedback,
       uploadedAt: found?.uploadedAt,
+      fileUrl: found?.fileUrl,
     };
   });
 };
 
 const VisaStatus: React.FC = () => {
+  const [authType, setAuthType] = useState<string | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
   const theme = useTheme();
 
   const [steps, setSteps] = useState<VisaStep[]>([]);
 
   useEffect(() => {
-    const fetchDocs = async () => {
+    const fetchData = async () => {
       try {
+        const userRes = await api.get("/users/me");
+        const type = userRes.data.user?.workAuthorization?.authType || null;
+
+        setAuthType(type);
+
+        if (!["opt", "opt-stem"].includes(type)) {
+          setLoadingAuth(false);
+          return;
+        }
+
         const res = await api.get("/documents/me");
         const docs = res.data.documents;
         setSteps(transformDocs(docs));
       } catch (err) {
         console.error(err);
+      } finally {
+        setLoadingAuth(false);
       }
     };
 
-    fetchDocs();
+    fetchData();
   }, []);
+
 
   const getStepIcon = (status: StepStatus) => {
     switch (status) {
@@ -168,7 +187,19 @@ const VisaStatus: React.FC = () => {
 
   const activeStep = getActiveStep();
   const completedSteps = steps.filter((s) => s.status === "approved").length;
-  const progress = (completedSteps / steps.length) * 100;
+  const progress = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0;
+
+  if (loadingAuth) {
+    return null;
+  }
+
+  if (!["opt", "opt-stem"].includes(authType || "")) {
+    return (
+      <Alert severity="info" sx={{ mt: 4 }}>
+        Visa management is only required for OPT or STEM Extension employees.
+      </Alert>
+    );
+  }
 
   return (
     <Box>
@@ -196,18 +227,31 @@ const VisaStatus: React.FC = () => {
               </Typography>
             </Box>
             <Box sx={{ display: "flex", gap: 1 }}>
-              <Chip
-                label="OPT"
-                color="primary"
-                variant="outlined"
-                sx={{ fontWeight: 600 }}
-              />
-              <Chip
-                label="STEM Extension Eligible"
-                color="success"
-                variant="outlined"
-                sx={{ fontWeight: 600 }}
-              />
+              {authType === "opt" && (
+                <Chip
+                  label="OPT"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+              )}
+
+              {authType === "opt-stem" && (
+                <>
+                  <Chip
+                    label="OPT"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
+                  <Chip
+                    label="STEM Extension"
+                    color="success"
+                    variant="outlined"
+                    sx={{ fontWeight: 600 }}
+                  />
+                </>
+              )}
             </Box>
           </Box>
 
@@ -297,6 +341,38 @@ const VisaStatus: React.FC = () => {
                       </Alert>
                     )}
 
+                    {step.status === "pending" && (
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        Waiting for HR to approve your {step.title}
+                      </Alert>
+                    )}
+
+                    {step.status === "approved" &&
+                      step.id === "opt_receipt" && (
+                        <Alert severity="success" sx={{ mb: 2 }}>
+                          Please upload a copy of your OPT EAD
+                        </Alert>
+                      )}
+
+                    {step.status === "approved" && step.id === "opt_ead" && (
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        Please download and fill out the I-983 form
+                      </Alert>
+                    )}
+
+                    {step.status === "approved" && step.id === "i_983" && (
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        Please send the I-983 to your school and upload the new
+                        I-20
+                      </Alert>
+                    )}
+
+                    {step.status === "approved" && step.id === "i_20" && (
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        All documents have been approved
+                      </Alert>
+                    )}
+
                     {step.document && step.status !== "rejected" ? (
                       <Paper
                         sx={{
@@ -320,9 +396,27 @@ const VisaStatus: React.FC = () => {
                             Uploaded on {step.uploadedAt}
                           </Typography>
                         </Box>
-                        <IconButton size="small">
-                          <DownloadIcon fontSize="small" />
-                        </IconButton>
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          {/* Preview */}
+                          <IconButton
+                            size="small"
+                            component="a"
+                            href={step.fileUrl}
+                            target="_blank"
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+
+                          {/* Download */}
+                          <IconButton
+                            size="small"
+                            component="a"
+                            href={step.fileUrl}
+                            download
+                          >
+                            <DownloadIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </Paper>
                     ) : (
                       !isStepDisabled(index) && (
@@ -336,7 +430,14 @@ const VisaStatus: React.FC = () => {
                       )
                     )}
 
-                    {step.id === "i-983" && !isStepDisabled(index) && (
+                    {step.id === "opt_receipt" &&
+                      step.status !== "rejected" && (
+                        <Alert severity="info">
+                          OPT Receipt is submitted during onboarding.
+                        </Alert>
+                      )}
+
+                    {step.id === "i_983" && !isStepDisabled(index) && (
                       <Box sx={{ mt: 2 }}>
                         <Button
                           variant="outlined"

@@ -74,6 +74,7 @@ const HiringManagement: React.FC = () => {
   const [tokens, setTokens] = useState<TokenRecord[]>([]);
   const [applications, setApplications] = useState<OnboardingApplication[]>([]);
   const [loading, setLoading] = useState(false);
+  const isValidEmail = /\S+@\S+\.\S+/.test(newHireEmail);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -165,7 +166,7 @@ const HiringManagement: React.FC = () => {
     try {
       await api.post(`/hr/onboarding/${feedbackDialog.application.id}/review`, {
         decision: feedbackDialog.type === "approve" ? "approved" : "rejected",
-        feedback,
+        ...(feedbackDialog.type === "reject" && { feedback }),
       });
 
       // reload
@@ -255,7 +256,7 @@ const HiringManagement: React.FC = () => {
                 variant="contained"
                 startIcon={<SendIcon />}
                 onClick={handleGenerateToken}
-                disabled={!newHireEmail || !newHireName}
+                disabled={!newHireEmail || !newHireName || !isValidEmail}
                 sx={{ height: 56 }}
               >
                 Generate & Send Token
@@ -471,7 +472,10 @@ const HiringManagement: React.FC = () => {
                         </Box>
                       </Box>
                     </TableCell>
-                    <TableCell>{app.submittedAt}</TableCell>
+                    <TableCell>
+                      {new Date(app.submittedAt).toLocaleString()}
+                    </TableCell>
+
                     <TableCell>
                       <StatusChip status={app.status} />
                     </TableCell>
@@ -494,10 +498,16 @@ const HiringManagement: React.FC = () => {
                         }}
                       >
                         <Tooltip title="View Application">
-                          <IconButton size="small">
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              window.open(`/hr/onboarding/${app.id}`, "_blank")
+                            }
+                          >
                             <ViewIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
+
                         {app.status === "pending" && (
                           <>
                             <Tooltip title="Approve">

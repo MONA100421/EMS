@@ -185,8 +185,9 @@ const AppLayout: React.FC = () => {
           }}
         >
           <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-            {user?.firstName?.[0]}
-            {user?.lastName?.[0]}
+            {user?.role === "hr"
+              ? "HR"
+              : `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
@@ -252,8 +253,9 @@ const AppLayout: React.FC = () => {
                 height: 36,
               }}
             >
-              {user?.firstName?.[0]}
-              {user?.lastName?.[0]}
+              {user?.role === "hr"
+                ? "HR"
+                : `${user?.firstName?.[0] ?? ""}${user?.lastName?.[0] ?? ""}`}
             </Avatar>
           </IconButton>
           <Menu
