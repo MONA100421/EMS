@@ -29,7 +29,10 @@ export const notifyVisaEmployee = async (req: Request, res: Response) => {
       i_20: "I-20",
     };
 
-    const readable = stepLabels.hasOwnProperty(document.type)
+    const readable = Object.prototype.hasOwnProperty.call(
+      stepLabels,
+      document.type,
+    )
       ? stepLabels[document.type as keyof typeof stepLabels]
       : document.type;
 
@@ -109,7 +112,7 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
           if (!doc) {
             currentStep = `Waiting for ${stepLabels[step]}`;
             nextAction = "Employee Upload Required";
-            actionType = "none";
+            actionType = "notify";
             break;
           }
 
@@ -189,9 +192,7 @@ export const getVisaOverview = async (_req: Request, res: Response) => {
 
     const filtered = out.filter(Boolean);
 
-    const inProgress = filtered.filter(
-      (r: any) => r.stepStatus !== "All Documents Approved",
-    );
+    const inProgress = filtered.filter((r: any) => r.stepStatus !== "approved");
 
     return res.json({
       ok: true,
